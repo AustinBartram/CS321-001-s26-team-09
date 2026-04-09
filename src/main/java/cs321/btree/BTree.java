@@ -1,31 +1,80 @@
 package cs321.btree;
 
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 
-public class BTree {
+public class BTree implements BTreeInterface {
 
     private BTreeNode root;
     private int t; // degree
 
+    // fields for tracking size and number of nodes in the tree.
     private int size = 0;
     private int nodeCount = 1;
+
+    // fields for disk storage
+    private FileChannel file;
+    private ByteBuffer buffer;
+    private long rootAddress;
+    private long nextAddress;
+    private static final int METADATA_SIZE = Long.BYTES;
+    private int nodeSize;
 
 
     //constructor (degree = 2)
     public BTree(String filename) {
         this(2, filename);
+        // this allows for the user to then add in their own input
     }
 
+    /**
+     * Constructor for the BTree class. It initializes the BTree with a given degree and sets up the file for disk storage.
+     * @param t
+     * @param filename
+     */
     public BTree(int t, String filename) {
         this.t = t;
-        root = new BTreeNode(true);
+        // this sets up the file for disk storage. It creates a RandomAccessFile and gets its FileChannel for reading and writing nodes to disk.
+        try {
+            RandomAccessFile randomFile = new RandomAccessFile(filename, "rw");
+            file = randomFile.getChannel();
+
+            // calculate the size of a node in bytes. This includes the number of keys (int), 
+            // the leaf flag (byte), the keys and counts (2t - 1 TreeObjects), and the child addresses (2t longs).
+            nodeSize = Integer.BYTES + 1 + (2 * t - 1) * TreeObject.BYTES + (2 * t) * Long.BYTES;
+
+            // initialize the buffer to the size of a node. This buffer will be used for reading and writing nodes to disk.
+            buffer = ByteBuffer.allocate(nodeSize);
+
+            // initialize the root node and set its address. The root node is created as a leaf node with no keys and no children.
+            root = new BTreeNode(true);
+            root.address = METADATA_SIZE;
+
+            // write the root node to disk and set the root address and next address for the next node to be written.
+            diskWrite(root);
+            rootAddress = root.address;
+            nextAddress = rootAddress + nodeSize;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
+
     class BTreeNode {
         int numKeys;
         boolean isLeaf;
         TreeObject[] keys;
         BTreeNode[] children;
+        long address;
 
+        /**
+         * Constructor for the BTreeNode class. It initializes a BTreeNode with the given leaf flag and sets up the keys and children arrays.
+         * @param isLeaf
+         */
         BTreeNode(boolean isLeaf) {
             this.isLeaf = isLeaf;
             keys = new TreeObject[2 * t - 1];
@@ -35,7 +84,6 @@ public class BTree {
     }
 
     public void insert(TreeObject key) {
-
         // duplicate maintenance: if key already exists, just increment count
         TreeObject existing = search(key.getKey());
         if (existing != null) {
@@ -48,22 +96,21 @@ public class BTree {
         // If the root is full split it and create a new node. This increases the height. 
         if (r.numKeys == 2 * t - 1) {
             BTreeNode s = new BTreeNode(false);
+            s.address = nextAddress;
+            nextAddress += nodeSize;
+
             s.children[0] = r;
             root = s;
 
-            // this splits the old root and moves the key up. The new node s becomes the new root and has one key and two children.
             splitChild(s, 0, r);
             insertHelper(s, key);
         } else {
             insertHelper(r, key);
         }
 
-        // track total keys in the tree for unique keys.
         size++;
     }
 
-    // this is the helper that does insertion. It finds the needed leaf and insert the key and if needed splits the child.
-    // if the nodes not full it will just insert the key. But if it is full it splits the child.
     private void insertHelper(BTreeNode node, TreeObject key) {
 
         int i = node.numKeys - 1;
@@ -80,7 +127,7 @@ public class BTree {
             node.keys[i + 1] = key;
             node.numKeys++;
 
-        // if the node is not a lead then it neeeds to find the child. If the child is full then it should split then insert. 
+        // if the node is not a leaf, then we need to find the child to go to.
         } else {
             while (i >= 0 && key.compareTo(node.keys[i]) < 0) {
                 i--;
@@ -102,15 +149,16 @@ public class BTree {
     }
 
     /**
-     * Split the full child node and move the middle key up to the parent. This is a standard B-Tree split operation.
-     * this method is called when a child node is full and we need to split it to maintain the B properties. 
-     * @param parent
+     * This method splits a full child node into two nodes and moves the middle key up to the parent.
      * @param index
      * @param fullChild
      */
     private void splitChild(BTreeNode parent, int index, BTreeNode fullChild) {
-
+        // this creates a new node that will hold the last t - 1 keys of the full child.
         BTreeNode newNode = new BTreeNode(fullChild.isLeaf);
+        newNode.address = nextAddress;
+        nextAddress += nodeSize;
+
         newNode.numKeys = t - 1;
 
         // copy keys over to the new node. The middle key is at index t - 1 and will be shifted to the parent. the keys are copied from
@@ -129,113 +177,105 @@ public class BTree {
         // the full child now has only the first t - 1 keys and the new node has the last t - 1 keys. The middle key is moved up to the parent.
         fullChild.numKeys = t - 1;
 
-        // this takes care of the parent node and shifts the children and the keys for a new spot to be open for the new node and the middle keys.
+        // this shifts the children in the parent to the right to make space for the new child. 
+        // The new child is inserted at index + 1.
         for (int j = parent.numKeys; j >= index + 1; j--) {
             parent.children[j + 1] = parent.children[j];
         }
 
-        // link the new node to the parent
         parent.children[index + 1] = newNode;
 
-        // this shifts the keys in the parent over to make room for the middle keys from the full child that needs to be moved up. 
-        // the middle key is moved up and the parents keys shift right. The middle key is at 't-1' and the parents idex is at 
-        // 'index' and the keys are shifted from 'index' to 'numKeys - 1' to the right.
+        // this shifts the keys in the parent to the right to make space for the middle key 
+        // from the full child. The middle key is moved up to the parent and becomes the key at 
+        // index in the parent.
         for (int j = parent.numKeys - 1; j >= index; j--) {
             parent.keys[j + 1] = parent.keys[j];
         }
 
-        // move the middle key up to the parent and increase the number of keys in the parent.
+        // move the middle key up to the parent and increment the number of keys in the parent.
         parent.keys[index] = fullChild.keys[t - 1];
         parent.numKeys++;
 
-        // track the new node created for stats.
         nodeCount++;
     }
 
-    /**
-     * Search for a key in the B-Tree. Returns the TreeObject if found, otherwise null. 
-     * @param key
-     * @return
-     */
+    // this method searches for a key in the tree and returns the TreeObject if found.
     public TreeObject search(String key) {
         return searchHelper(root, new TreeObject(key));
     }
 
-    /**
-     * Helper method for search. This is a standard B-Tree search operation. It traverses the tree based on the key comparisons until 
-     * it finds the key or reaches a leaf node.
-     * @param node
-     * @param key
-     * @return
-     */
+    // this method searches for a key in the tree starting from the given node.
+    // It returns the TreeObject if found, otherwise it returns null.
     private TreeObject searchHelper(BTreeNode node, TreeObject key) {
 
         int i = 0;
 
-        // this loop traverses through the keys to find the right child node to go down, it then stops if the key is found or there is a key of 
-        // greater value. If the key is found it should return the key. 
+        // this goes through the keys in the node until it finds a key that is greater than or equal
+        // to the search key. If it finds a key that is equal to the search key, it returns it. If it
+        // finds a key that is greater than the search key, it stops and goes to the appropriate child.
         while (i < node.numKeys && key.compareTo(node.keys[i]) > 0) {
             i++;
         }
 
-        // if the key is found return it. If the key is not found and we are at a leaf node return null. Otherwise, continue searching down the tree.
+        // if the key is found in the node, return it.
         if (i < node.numKeys && key.compareTo(node.keys[i]) == 0) {
             return node.keys[i];
         }
 
-        // if we are at a leaf node and the key is not found return null.
+        // if the key is not found and the node is a leaf, then the key does not exist in the tree and we 
+        // return null.
         if (node.isLeaf) {
             return null;
         }
-
-        // continue searching down the tree.
+        // if the key is not found and the node is not a leaf, then we go to the appropriate child.
         return searchHelper(node.children[i], key);
     }
 
-    // getter for size
-    public int getSize() {
+    // this method returns the total number of unique keys in the tree.
+    public long getSize() {
         return size;
     }
 
-    // getter for degree
+    // this method returns the degree of the tree, which is the minimum number of keys in a non-root node.
     public int getDegree() {
         return t;
     }
 
-    // getter for number of nodes in the tree.
-    public int getNumberOfNodes() {
+    // this method returns the number of nodes in the tree. It is tracked as a field that is
+    // incremented whenever a new node is created.
+    public long getNumberOfNodes() {
         return nodeCount;
     }
 
-    // getter for height of the tree. This is calculated by traversing down the leftmost path of the tree until a leaf node is reached.
-    // The number of edges traversed is the height of the tree.
+    // this method calculates the height of the tree by calling a helper method that recursively
+    // goes down the leftmost path until it reaches a leaf node. The height is the number of edges.
     public int getHeight() {
         return getHeightMethod(root);
     }
 
-    // this is the helper method for getHeight. It traverses down the leftmost path of the tree until a leaf node is reached.
-    // The number of edges traversed is the height of the tree.
+    // this method calculates the height of the tree by recursively going down the leftmost path until 
+    // it reaches a leaf node. The height is the number of edges on the longest path from the root to a 
+    // leaf. Since we are going down the leftmost path, we can just count the number of nodes we encounter 
+    // until we reach a leaf. The height is then the number of nodes minus one.
     private int getHeightMethod(BTreeNode node) {
         if (node.isLeaf) return 0;
         return 1 + getHeightMethod(node.children[0]);
     }
 
-    // this method returns an array of the keys in the tree in sorted order. It does an inorder traversal of the tree and collects the keys 
-    // in a list, then converts it to an array.
+    // this method returns an array of all the keys in the tree in sorted order. It does this by doing 
+    // an inorder traversal of the tree and adding the keys to a list, which is then converted to an array 
+    // and returned.
     public String[] getSortedKeyArray() {
         ArrayList<String> list = new ArrayList<>();
         inorder(root, list);
         return list.toArray(new String[0]);
     }
 
-    /**
-     * This is the helper method for getSortedKeyArray. It does an inorder traversal of the tree and collects the keys in a list. 
-     * The inorder traversal visits the left child, then the key, then the right child. This ensures that the keys are collected in sorted order.
-     * @param node
-     * @param list
-     */
+    // this method does an inorder traversal of the tree and adds the keys to the list in sorted order.
     private void inorder(BTreeNode node, ArrayList<String> list) {
 
+        // this goes through the keys and children in order. For each key, it first goes to the left child, 
+        // then adds the key to the list, then goes to the right child.
         for (int i = 0; i < node.numKeys; i++) {
             if (!node.isLeaf) {
                 inorder(node.children[i], list);
@@ -243,9 +283,125 @@ public class BTree {
             list.add(node.keys[i].getKey());
         }
 
-        // visit the last child if the node is not a leaf.
+        // this is for the last child if the node is not a leaf. The last child is at index numKeys.
         if (!node.isLeaf) {
             inorder(node.children[node.numKeys], list);
         }
+    }
+
+    /**
+     * this method reads a BTreeNode from disk given its address. It first checks if the disk address is 0,
+     * which indicates that the node does not exist on disk and returns null. 
+     * @param diskAddress
+     * @return
+     * @throws Exception
+     */
+    private void writeTreeObject(TreeObject obj) {
+        byte[] bytes = new byte[64];
+
+        // this converts the key to bytes and writes it to the buffer. If the object is null, 
+        // it writes an empty byte array and a count of 0.
+        if (obj != null) {
+            byte[] keyBytes = obj.getKey().getBytes();
+            System.arraycopy(keyBytes, 0, bytes, 0, keyBytes.length);
+            buffer.put(bytes);
+            buffer.putLong(obj.getCount());
+        // if the object is null, we write an empty byte array and a count of 0 to indicate that there is 
+        // no key at this position in the node.
+        } else {
+            buffer.put(bytes);
+            buffer.putLong(0);
+        }
+    }
+    // this method reads a TreeObject from the buffer. It first reads 64 bytes for the key and then reads 
+    // a long for the count.
+    private TreeObject readTreeObject() {
+        byte[] keyBytes = new byte[64];
+        buffer.get(keyBytes);
+
+        String key = new String(keyBytes).trim();
+        long count = buffer.getLong();
+
+        if (key.isEmpty()) return null;
+        return new TreeObject(key, count);
+    }
+
+    private void diskWrite(BTreeNode node) throws Exception {
+        file.position(node.address);
+        buffer.clear();
+
+        // write metadata
+        buffer.putInt(node.numKeys);
+        buffer.put((byte)(node.isLeaf ? 1 : 0));
+
+        // write keys
+        for (int i = 0; i < 2 * t - 1; i++) {
+            writeTreeObject(node.keys[i]);
+        }
+
+        // write children addresses
+        for (int i = 0; i < 2 * t; i++) {
+            buffer.putLong(node.children[i] != null ? node.children[i].address : 0);
+        }
+
+        buffer.flip();
+        file.write(buffer);
+    }
+
+    /**
+     * this method reads a BTreeNode from disk given its address. It first checks if the disk address is 0,
+     * which indicates that the node does not exist on disk and returns null.
+     * @param diskAddress
+     * @return
+     * @throws Exception
+     */
+    public BTreeNode diskRead(long diskAddress) throws Exception {
+        if (diskAddress == 0) return null;
+
+        file.position(diskAddress);
+        buffer.clear();
+        file.read(buffer);
+        buffer.flip();
+
+        // read metadata
+        int numKeys = buffer.getInt();
+        boolean isLeaf = (buffer.get() == 1);
+
+        BTreeNode node = new BTreeNode(isLeaf);
+        node.numKeys = numKeys;
+        node.address = diskAddress;
+
+        // read keys
+        for (int i = 0; i < 2 * t - 1; i++) {
+            node.keys[i] = readTreeObject();
+        }
+
+        // read children
+        for (int i = 0; i < 2 * t; i++) {
+            long addr = buffer.getLong();
+            if (addr != 0) {
+                node.children[i] = diskRead(addr); // recursive load
+            }
+        }
+
+        return node;
+    }
+
+    @Override
+    public void dumpToFile(PrintWriter out) throws IOException {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'dumpToFile'");
+    }
+
+    @Override
+    public void dumpToDatabase(String dbName, String tableName) throws IOException {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'dumpToDatabase'");
+    }
+
+    @Override
+    public void delete(String key) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'delete'");
     }
 }

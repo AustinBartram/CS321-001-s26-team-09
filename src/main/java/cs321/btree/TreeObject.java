@@ -65,7 +65,6 @@ public class TreeObject implements Comparable<TreeObject> {
     public void setCount(long count) {
         this.count = count;
     }
-   
     
     /**
      * Increment the count for the key.
