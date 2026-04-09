@@ -1,0 +1,5 @@
+Manifest-Version: 1.0
+Implementation-Title: SSHSearchDatabase
+Implementation-Version: 
+Main-Class: cs321.search.SSHSearchDatabase
+
