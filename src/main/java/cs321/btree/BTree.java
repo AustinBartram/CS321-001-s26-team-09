@@ -7,6 +7,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 
+
 public class BTree implements BTreeInterface {
 
     private BTreeNode root;
@@ -29,6 +30,7 @@ public class BTree implements BTreeInterface {
     public BTree(String filename) {
         this(2, filename);
         // this allows for the user to then add in their own input
+
     }
 
     /**
@@ -38,6 +40,7 @@ public class BTree implements BTreeInterface {
      */
     public BTree(int t, String filename) {
         this.t = t;
+
         // this sets up the file for disk storage. It creates a RandomAccessFile and gets its FileChannel for reading and writing nodes to disk.
         try {
             RandomAccessFile randomFile = new RandomAccessFile(filename, "rw");
@@ -102,12 +105,14 @@ public class BTree implements BTreeInterface {
             s.children[0] = r;
             root = s;
 
+            // this splits the old root and moves the key up. The new node s becomes the new root and has one key and two children.
             splitChild(s, 0, r);
             insertHelper(s, key);
         } else {
             insertHelper(r, key);
         }
 
+        // track total keys in the tree for unique keys.
         size++;
     }
 
@@ -186,8 +191,7 @@ public class BTree implements BTreeInterface {
         parent.children[index + 1] = newNode;
 
         // this shifts the keys in the parent to the right to make space for the middle key 
-        // from the full child. The middle key is moved up to the parent and becomes the key at 
-        // index in the parent.
+        // from the full child.
         for (int j = parent.numKeys - 1; j >= index; j--) {
             parent.keys[j + 1] = parent.keys[j];
         }
@@ -205,14 +209,12 @@ public class BTree implements BTreeInterface {
     }
 
     // this method searches for a key in the tree starting from the given node.
-    // It returns the TreeObject if found, otherwise it returns null.
     private TreeObject searchHelper(BTreeNode node, TreeObject key) {
 
         int i = 0;
 
         // this goes through the keys in the node until it finds a key that is greater than or equal
-        // to the search key. If it finds a key that is equal to the search key, it returns it. If it
-        // finds a key that is greater than the search key, it stops and goes to the appropriate child.
+        // to the search key.
         while (i < node.numKeys && key.compareTo(node.keys[i]) > 0) {
             i++;
         }
@@ -227,7 +229,7 @@ public class BTree implements BTreeInterface {
         if (node.isLeaf) {
             return null;
         }
-        // if the key is not found and the node is not a leaf, then we go to the appropriate child.
+        // if the key is not found and the node is not a leaf.
         return searchHelper(node.children[i], key);
     }
 
@@ -236,35 +238,30 @@ public class BTree implements BTreeInterface {
         return size;
     }
 
-    // this method returns the degree of the tree, which is the minimum number of keys in a non-root node.
+    // this method returns the degree of the tree.
     public int getDegree() {
         return t;
     }
 
-    // this method returns the number of nodes in the tree. It is tracked as a field that is
-    // incremented whenever a new node is created.
+    // this method returns the number of nodes in the tree.
     public long getNumberOfNodes() {
         return nodeCount;
     }
 
-    // this method calculates the height of the tree by calling a helper method that recursively
-    // goes down the leftmost path until it reaches a leaf node. The height is the number of edges.
+    // this method calculates the height of the tree
     public int getHeight() {
         return getHeightMethod(root);
     }
 
     // this method calculates the height of the tree by recursively going down the leftmost path until 
-    // it reaches a leaf node. The height is the number of edges on the longest path from the root to a 
-    // leaf. Since we are going down the leftmost path, we can just count the number of nodes we encounter 
-    // until we reach a leaf. The height is then the number of nodes minus one.
+    // it reaches a leaf node.
     private int getHeightMethod(BTreeNode node) {
         if (node.isLeaf) return 0;
         return 1 + getHeightMethod(node.children[0]);
     }
 
     // this method returns an array of all the keys in the tree in sorted order. It does this by doing 
-    // an inorder traversal of the tree and adding the keys to a list, which is then converted to an array 
-    // and returned.
+    // an inorder traversal.
     public String[] getSortedKeyArray() {
         ArrayList<String> list = new ArrayList<>();
         inorder(root, list);
@@ -274,8 +271,7 @@ public class BTree implements BTreeInterface {
     // this method does an inorder traversal of the tree and adds the keys to the list in sorted order.
     private void inorder(BTreeNode node, ArrayList<String> list) {
 
-        // this goes through the keys and children in order. For each key, it first goes to the left child, 
-        // then adds the key to the list, then goes to the right child.
+        // this goes through the keys and children in order.
         for (int i = 0; i < node.numKeys; i++) {
             if (!node.isLeaf) {
                 inorder(node.children[i], list);
@@ -290,8 +286,7 @@ public class BTree implements BTreeInterface {
     }
 
     /**
-     * this method reads a BTreeNode from disk given its address. It first checks if the disk address is 0,
-     * which indicates that the node does not exist on disk and returns null. 
+     * this method reads a BTreeNode from disk given its address.
      * @param diskAddress
      * @return
      * @throws Exception
