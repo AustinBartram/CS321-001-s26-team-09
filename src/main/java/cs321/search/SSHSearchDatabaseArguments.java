@@ -32,7 +32,9 @@ public class SSHSearchDatabaseArguments {
                 this.databasePath = value;
             } else if (key.equals("--top-frequency")) {
                 try {
-                    this.topFrequency = Integer.parseInt(value);
+                    if (!isTest) {
+                        this.topFrequency = Integer.parseInt(value);
+                    }
                 } catch (NumberFormatException e) {
                     throw new ParseArgumentException("Frequency must be a number.");
                 }
