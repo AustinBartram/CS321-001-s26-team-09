@@ -3,12 +3,22 @@ package cs321.search;
 import cs321.common.ParseArgumentException;
 import cs321.common.ParseArgumentUtils;
 
+/**
+ * This class represents the arguments for the SSHSearchDatabase program.
+ * 
+ * @author Calvin McKee
+ */
 public class SSHSearchDatabaseArguments {
     private String type;
     private String databasePath;
     private int topFrequency;
     private boolean isTest = false;
 
+    /**
+     * Parses the command-line arguments and initializes the fields.
+     * @param args
+     * @throws ParseArgumentException
+     */
     public SSHSearchDatabaseArguments(String[] args) throws ParseArgumentException {
         if (args.length < 2 || args.length > 3) {
             printUsage();
@@ -53,23 +63,41 @@ public class SSHSearchDatabaseArguments {
         }
     }
 
+    /**
+     * Returns the SQL table name based on the type argument.
+     * @return
+     */
     public String getSqlTableName() {
         return type.replace("-", "").toLowerCase();
     }
     
+    /**
+     * Returns the database path.
+     * @return
+     */
     public String getDatabasePath() { 
         return databasePath; 
     }
 
+    /**
+     * Returns the top frequency value.
+     * @return
+     */
     public int getTopFrequency() { 
         return topFrequency; 
     }
 
+    /**
+     * Returns whether the program is in test mode.
+     * @return
+     */
     public boolean isTestMode() { 
         return isTest; 
     }
     
-
+    /**
+     * Prints usage instructions to stderr.
+     */
     private void printUsage() {
         System.err.println("Usage: java -jar build/libs/SSHSearchDatabase.jar --type=<tree-type> --database=<SQLite-database-path> --top-frequency=<10/25/50>");
         System.err.println("  type: the type of the database (e.g., 'btree'), use test for testing");

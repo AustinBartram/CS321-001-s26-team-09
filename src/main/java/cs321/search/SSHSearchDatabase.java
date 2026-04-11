@@ -8,6 +8,12 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import cs321.common.ParseArgumentException;
 
+
+/**
+ * This class implements the SSHSearchDatabase program which connects to a SQLite database,
+ * retrieves the top N entries from a specified table, and prints them to stdout.
+ * @author Calvin McKee
+ */
 public class SSHSearchDatabase {
 
     public static void main(String[] args) {
@@ -33,6 +39,10 @@ public class SSHSearchDatabase {
 
     /**
      * Creates the 'acceptedip' table and inserts the 25 required test entries.
+     * To use run ./gradlew createJarSSHSearchDatabase and then run:
+     * java -jar build/libs/SSHSearchDatabase.jar --type=accepted-ip --database=test.db --top-frequency=
+     * Finally run
+     * java -jar build/libs/SSHSearchDatabase.jar --type=accepted-ip --database=test.db --top-frequency=<10/25/50>
      */
     public static void initializeTestData(Connection conn) throws SQLException {
         String tableName = "acceptedip";
