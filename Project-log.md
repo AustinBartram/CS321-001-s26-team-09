@@ -19,4 +19,4 @@
 12. Closes #17 commit 5f7b11d6f575aae48ac8a07e1c462419a9224463 `(CalvinM)`
 13. Closes #18 commit 5f7b11d6f575aae48ac8a07e1c462419a9224463 `(CalvinM)`
 14. Closes #19 commit d1d687b77b2d9b30eb15e405f3af2d7148f67a31 `(CalvinM)`
-15. Create Project-log.md (this file!) commit 7ae23e9e2a9857a2f99e5091e137c8c440db9f8a `(AustinB)`
+15. Create Project-log.md (this file!) commit 5e613eaa52c17f8d182109ce9a96a8bee5af37c1 `(AustinB)`
