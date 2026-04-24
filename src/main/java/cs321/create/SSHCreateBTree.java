@@ -1,8 +1,8 @@
 package cs321.create;
 
-import cs321.btree.BTree;
-import cs321.btree.BTreeException;
-import cs321.btree.TreeObject;
+import java.util.Arrays;
+import java.util.List;
+
 import cs321.common.ParseArgumentException;
 
 
@@ -13,6 +13,7 @@ import cs321.common.ParseArgumentException;
  * @author 
  */
 public class SSHCreateBTree {
+
     /**
      * Main driver of program.
      * @param args
@@ -20,7 +21,11 @@ public class SSHCreateBTree {
     public static void main(String[] args) throws Exception 
 	{
 		System.out.println("Hello world from cs321.create.SSHCreateBTree.main");
-        SSHCreateBTreeArguments myArgs = parseArguments(args);
+        try {
+            SSHCreateBTreeArguments myArgs = parseArguments(args);
+        } catch (Exception e) {
+            printUsageAndExit(e.toString());
+        }
         // other code    
 	}
 
@@ -31,7 +36,96 @@ public class SSHCreateBTree {
      */
     public static SSHCreateBTreeArguments parseArguments(String[] args) throws ParseArgumentException
     {
-        return null;
+        final List<String> SUPPORTED_TYPES = Arrays.asList("accepted-ip", "accepted-time", "invalid-ip","invalid-time","failed-ip","failed-time","reverseaddress-ip","reverseaddress-time","user-ip");
+        if (args.length < 5 || args.length > 7) {
+            throw new ParseArgumentException("Invalid number of arguments");
+        }
+
+        boolean tempUseCache = false;
+        int tempDegree = 0;
+        String tempSSHFileName = "";
+        String tempTreeType = "";
+        int tempCacheSize = 0;
+        int tempDebugLevel = 0;
+        boolean tempsUseDatabase = false;
+
+        for (String arg : args) {
+            String[] parts = arg.split("=", 2); // Split into exactly 2 parts
+            if (parts.length < 2) continue; // Skip if no value provided after '='
+
+            String key = parts[0];
+            String value = parts[1];
+
+            if (key.equals("--cache")) {
+                if (value.equals("1")) {
+                    tempUseCache = true;
+                } else if (value.equals("0")) {
+                    tempUseCache = false;
+                } else {
+                    throw new ParseArgumentException("Error: cache value " + value + ". Must be 1 or 0.");
+                }
+            } else if (key.equals("--degree")) {
+                try {
+                    tempDegree = Integer.parseInt(value);
+                } catch (NumberFormatException e) {
+                    throw new ParseArgumentException("Error: The degree value '" + value + "' must be an integer.");
+                }
+                if (tempDegree < 0) {
+                    throw new ParseArgumentException("Error: The degree value must be non negative");
+                }
+            } else if (key.equals("--sshFile")) {
+                if (value.toLowerCase().endsWith(".txt")) {
+                    tempSSHFileName = value;
+                } else {
+                    throw new ParseArgumentException("Error: File must be a .txt file.");
+                }
+            } else if (key.equals("--type")) {
+                if (!SUPPORTED_TYPES.contains(value)) {
+                    throw new ParseArgumentException("Unsupported tree type: " + value);
+                } else {
+                    tempTreeType = value;
+                }
+            } else if (key.equals("--cache-size")) {
+                try {
+                    tempCacheSize = Integer.parseInt(value);
+                } catch (NumberFormatException e) {
+                    throw new ParseArgumentException("Error: The degree value '" + value + "' must be an integer.");
+                }
+                if (tempCacheSize < 100 || tempCacheSize > 10000) {
+                    throw new ParseArgumentException("Error: The cache size must be between 100 and 10000");
+                }
+            } else if (key.equals("--database")) {
+                if (value.equalsIgnoreCase("yes")) {
+                    tempsUseDatabase = true;
+                } else if(value.equalsIgnoreCase("no")) {
+                    tempsUseDatabase = false;
+                } else {
+                    throw new ParseArgumentException("Error: using the database was not specified correctly");
+                }
+            } else if (key.equals("--debug")) {
+                try {
+                    tempDebugLevel = Integer.parseInt(value);
+                } catch (NumberFormatException e) {
+                    throw new ParseArgumentException("Error: The debug value '" + value + "' must be an integer.");
+                }
+                if (tempDebugLevel != 1) {
+                    tempDebugLevel = 0;
+                }
+            }
+        }
+
+        if (tempUseCache == true && tempCacheSize == 0) {
+            throw new ParseArgumentException("Error: The cache size must be initialized when use cache is true");
+        }
+        if (tempSSHFileName.isEmpty()) {
+            throw new ParseArgumentException("Error: --sshFile is missing a value");
+        }
+        if (tempTreeType.isEmpty()) {
+            throw new ParseArgumentException("Error: --sshFile is missing a value");
+        }
+
+        SSHCreateBTreeArguments myArgs = new SSHCreateBTreeArguments(tempUseCache, tempDegree, tempSSHFileName, tempTreeType, tempCacheSize, tempDebugLevel);
+        return myArgs;
     }
 
 
@@ -41,6 +135,28 @@ public class SSHCreateBTree {
 	 */
 	private static void printUsageAndExit(String errorMessage)
     {
+        System.err.println(errorMessage);
+        System.err.println("java -jar build/libs/SSHCreateBTree.jar --cache=<0/1> --degree=<btree-degree> \n" +
+                        "          --sshFile=<ssh-File> --type=<tree-type> [--cache-size=<n>] \n" + 
+                        "          --database=<yes/no> [--debug=<0|1>]\n" +
+                        "cache: specifies whether the program should use cache, if 1 cache-size is required\n" +
+                        "degree: the degree to be used for the BTree, if 0 sets as the best option\n" +
+                        "sshFile: the input .txt file containing the wrangled SSH log file\n" +
+                        "type:the type of BTree used and is one of nine options:\n" +
+                                                        "\n" +
+                                                        "accepted-ip\n" +
+                                                        "accepted-time\n" +
+                                                        "invalid-ip\n" + 
+                                                        "invalid-time\n" +
+                                                        "failed-ip\n" +
+                                                        "failed-time\n" +
+                                                        "reverseaddress-ip\n" +
+                                                        "reverseaddress-time\n" +
+                                                        "user-ip\n" +
+                                                        "\n" +
+                        "cache-size: optional argument, which is an integer between 100 and 10000 (inclusive) that represents the maximum number of BTreeNode objects that can be stored in the memory cache\n" +
+                        "database: the path to the SQL database created after BTree creation for a specific BTree type. The name of the database file should be SSHLogDB.db\n" +
+                        "debug: if enabled outputs more detailed error messages for debugging ");
         System.exit(1);
 	}
 
