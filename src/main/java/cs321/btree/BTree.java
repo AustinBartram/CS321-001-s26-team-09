@@ -439,9 +439,32 @@ public class BTree implements BTreeInterface {
 
     @Override
     public void dumpToFile(PrintWriter out) throws IOException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'dumpToFile'");
+        dumpHelper(root, out);
+        out.flush();
     }
+
+    /**
+     * This method does inorder traversal of the tree and writes the keys and frequencies to the output file in sorted order
+     * @param node the current node being traversed
+     * @param out the PrintWriter object used to write to the output file
+     */
+    private void dumpHelper(BTreeNode node, PrintWriter out) {
+        if (node == null) return;
+        for (int i = 0; i < node.numKeys; i++) {
+            if (!node.isLeaf) {
+                dumpHelper(diskRead(node.childrenAddresses[i]), out);
+            }
+            if (node.keys[i] != null) {
+                out.println(node.keys[i].toString());
+            }
+        }
+
+        // this is for the last child if the node is not a leaf. The last child is at index numKeys.
+        if (!node.isLeaf) {
+            dumpHelper(diskRead(node.childrenAddresses[node.numKeys]), out);
+        }
+    }
+
 
     @Override
     public void dumpToDatabase(String dbName, String tableName) throws IOException {
