@@ -124,7 +124,7 @@ public class SSHCreateBTree {
             throw new ParseArgumentException("Error: --sshFile is missing a value");
         }
 
-        SSHCreateBTreeArguments myArgs = new SSHCreateBTreeArguments(tempUseCache, tempDegree, tempSSHFileName, tempTreeType, tempCacheSize, tempDebugLevel);
+        SSHCreateBTreeArguments myArgs = new SSHCreateBTreeArguments(tempUseCache, tempDegree, tempSSHFileName, tempTreeType, tempCacheSize, tempDebugLevel, tempsUseDatabase);
         return myArgs;
     }
 
