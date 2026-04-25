@@ -25,6 +25,7 @@ public class BTree implements BTreeInterface {
     private long rootAddress;
     private long nextAddress;
     private static final int METADATA_SIZE = Long.BYTES;
+    private static final int RECOMMENDED_DEGREE = 26;
     private int nodeSize;
     private boolean useCache;
     private Cache<Long, BTreeNode> cache;
@@ -32,7 +33,7 @@ public class BTree implements BTreeInterface {
 
     //constructor (degree = 2)
     public BTree(String filename) {
-        this(2, filename, 0, false);
+        this(RECOMMENDED_DEGREE, filename, 0, false);
         // this allows for the user to then add in their own input
 
     }
@@ -79,7 +80,7 @@ public class BTree implements BTreeInterface {
             root.address = METADATA_SIZE;
 
             // write the root node to disk and set the root address and next address for the next node to be written.
-            diskWrite(root);
+            // diskWrite(root);
             rootAddress = root.address;
             nextAddress = rootAddress + nodeSize;
 
@@ -137,7 +138,7 @@ public class BTree implements BTreeInterface {
             // this splits the old root and moves the key up. The new node s becomes the new root and has one key and two children.
             splitChild(s, 0, r);
             insertHelper(s, key);
-            diskWrite(root);
+            // diskWrite(root);
             // writeHeader();
         } else {
             insertHelper(r, key);
@@ -516,5 +517,10 @@ public class BTree implements BTreeInterface {
     public void delete(String key) {
         // TODO Auto-generated method stub
         throw new UnsupportedOperationException("Unimplemented method 'delete'");
+    }
+
+    public void close() throws IOException {
+        diskWrite(root);
+        file.close();
     }
 }

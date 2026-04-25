@@ -1,7 +1,6 @@
 package cs321.search;
 
 import cs321.common.ParseArgumentException;
-import cs321.common.ParseArgumentUtils;
 
 /**
  * This class represents the arguments for the SSHSearchDatabase program.

@@ -1,8 +1,12 @@
 package cs321.create;
 
+import java.io.FileWriter;
+import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.List;
 
+import cs321.btree.BTree;
+import cs321.btree.TreeObject;
 import cs321.common.ParseArgumentException;
 
 
@@ -20,14 +24,92 @@ public class SSHCreateBTree {
      */
     public static void main(String[] args) throws Exception 
 	{
-		System.out.println("Hello world from cs321.create.SSHCreateBTree.main");
+        SSHCreateBTreeArguments myArgs;
+        BTree myTree;
         try {
-            SSHCreateBTreeArguments myArgs = parseArguments(args);
+            myArgs = parseArguments(args);
+
+            String randomAccessFileName = "SSH_log.txt.ssh.btree."+myArgs.getTreeType() + "." + myArgs.getDegree();
+            
+            if (myArgs.getUseCache() == true) {
+                myTree = new BTree(myArgs.getDegree(), randomAccessFileName, myArgs.getCacheSize(), true);
+            } else {
+                myTree = new BTree(myArgs.getDegree(), randomAccessFileName);
+            }
+
+            SSHFileReader reader = new SSHFileReader(myArgs.getSSHFileName());
+
+            while (reader.hasNextLine()) {
+                String line = reader.nextLine();
+                
+                String[] parts = line.trim().split("\\s+");
+                
+                if (parts.length < 5) continue;
+
+                String date = parts[0];
+                String time = parts[1];
+                String status = parts[2];
+                String subject = parts[3];
+                String ip = parts[4];
+
+                String key = buildKey(myArgs.getTreeType(), date, time, status, subject, ip);
+
+                if (key != null) {
+                    myTree.insert(new TreeObject(key));
+                }
+            }
+            reader.close();
+
+            if (myArgs.getUseDatabase()) {
+                myTree.dumpToDatabase("SSHLogDB.db", myArgs.getTreeType().replace("-", ""));
+            }
+
+            if (myArgs.getDebugLevel() == 1) {
+                PrintWriter fileDump = new PrintWriter(new FileWriter("dump-" + myArgs.getTreeType() + "." + myArgs.getDegree() + ".txt"));
+                myTree.dumpToFile(fileDump);
+                fileDump.close();
+            }
+
+
+            myTree.close();
         } catch (Exception e) {
             printUsageAndExit(e.toString());
         }
-        // other code    
 	}
+
+    private static String buildKey(String type, String date, String time, String status, String user, String ip) {
+        switch (type) {
+            case "accepted-ip":
+                if (!status.equals("Accepted")) return null;
+                return status + "-" + ip;
+            case "accepted-time":
+                if (!status.equals("Accepted")) return null;
+                return status + "-" + date + " " + time;
+            case "invalid-ip":
+                if (!status.equals("Invalid")) return null;
+                return status + "-" + ip;
+            case "invalid-time":
+                if (!status.equals("Invalid")) return null;
+                return status + "-" + date + " " + time;
+            case "failed-ip":
+                if (!status.equals("Failed")) return null;
+                return status + "-" + ip;
+            case "failed-time":
+                if (!status.equals("Failed")) return null;
+                return status + "-" + date + " " + time;
+            case "reverseaddress-ip":
+                if (status.equals("reverse") || status.equals("Address")) return null;
+                return ip + "-" + status;
+            case "reverseaddress-time":
+                if (status.equals("reverse") || status.equals("Address")) return null;
+                return date + " " + time + "-" + status;
+            case "user-ip":
+                if (status.equals("reverse") || status.equals("Address")) return null;
+                return user + "-" + ip;
+            default:
+                return null;
+        }
+    }
 
 
     /**
@@ -47,7 +129,7 @@ public class SSHCreateBTree {
         String tempTreeType = "";
         int tempCacheSize = 0;
         int tempDebugLevel = 0;
-        boolean tempsUseDatabase = false;
+        boolean tempUseDatabase = false;
 
         for (String arg : args) {
             String[] parts = arg.split("=", 2); // Split into exactly 2 parts
@@ -96,9 +178,9 @@ public class SSHCreateBTree {
                 }
             } else if (key.equals("--database")) {
                 if (value.equalsIgnoreCase("yes")) {
-                    tempsUseDatabase = true;
+                    tempUseDatabase = true;
                 } else if(value.equalsIgnoreCase("no")) {
-                    tempsUseDatabase = false;
+                    tempUseDatabase = false;
                 } else {
                     throw new ParseArgumentException("Error: using the database was not specified correctly");
                 }
@@ -124,7 +206,7 @@ public class SSHCreateBTree {
             throw new ParseArgumentException("Error: --sshFile is missing a value");
         }
 
-        SSHCreateBTreeArguments myArgs = new SSHCreateBTreeArguments(tempUseCache, tempDegree, tempSSHFileName, tempTreeType, tempCacheSize, tempDebugLevel, tempsUseDatabase);
+        SSHCreateBTreeArguments myArgs = new SSHCreateBTreeArguments(tempUseCache, tempDegree, tempSSHFileName, tempTreeType, tempCacheSize, tempDebugLevel, tempUseDatabase);
         return myArgs;
     }
 

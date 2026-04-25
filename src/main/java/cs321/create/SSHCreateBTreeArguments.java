@@ -1,7 +1,5 @@
 package cs321.create;
 
-import cs321.btree.TreeObject;
-
 /**
  * SSHCreateBTreeArguments parses command line arguments for SSHCreateBTree.
  *
@@ -60,7 +58,7 @@ public class SSHCreateBTreeArguments
      * @return the degree of the BTree as an int
      */
     public int getDegree() {
-        return this.getDegree();
+        return this.degree;
     }
 
     /**
@@ -93,6 +91,14 @@ public class SSHCreateBTreeArguments
      */
     public int getDebugLevel() {
         return this.debugLevel;
+    }
+
+    /**
+     * Returns the debug level
+     * @return the debug level as an int
+     */
+    public boolean getUseDatabase() {
+        return this.useDatabase;
     }
 
     /**
