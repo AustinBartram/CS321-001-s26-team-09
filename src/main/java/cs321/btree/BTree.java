@@ -7,6 +7,8 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
+import cs321.cache.KeyInterface;
+import cs321.cache.Cache;
 
 public class BTree implements BTreeInterface {
 
@@ -24,22 +26,41 @@ public class BTree implements BTreeInterface {
     private long nextAddress;
     private static final int METADATA_SIZE = Long.BYTES;
     private int nodeSize;
+    private boolean useCache;
+    private Cache<Long, BTreeNode> cache;
 
 
     //constructor (degree = 2)
     public BTree(String filename) {
-        this(2, filename);
+        this(2, filename, 0, false);
         // this allows for the user to then add in their own input
 
     }
 
     /**
-     * Constructor for the BTree class. It initializes the BTree with a given degree and sets up the file for disk storage.
+     * Allows for a Btree to be created with a specified degree and filename for disk storage.
      * @param t
      * @param filename
      */
     public BTree(int t, String filename) {
+        this(t, filename, 0, false);
+    }
+
+    /**
+     * Constructor for the BTree class. It initializes the BTree with a given degree and sets up the file for disk storage. Also allows for the option of using a cache and specifying the cache size.
+     * @param t the degree of the BTree
+     * @param filename the name of the file for disk storage
+     * @param cacheSize the size of the cache if using, otherwise it is ignored
+     * @param useCache boolean for whether to use a cache or not, if false cacheSize is ignored
+     */
+    public BTree(int t, String filename, int cacheSize, boolean useCache) {
         this.t = t;
+
+        this.useCache = useCache;
+        if (this.useCache) {
+            this.cache = new Cache<Long, BTreeNode>(cacheSize);
+        }
+
 
         // this sets up the file for disk storage. It creates a RandomAccessFile and gets its FileChannel for reading and writing nodes to disk.
         try {
@@ -67,7 +88,7 @@ public class BTree implements BTreeInterface {
         }
     }
 
-    class BTreeNode {
+    class BTreeNode implements KeyInterface<Long> {
         int numKeys;
         boolean isLeaf;
         TreeObject[] keys;
@@ -83,6 +104,11 @@ public class BTree implements BTreeInterface {
             keys = new TreeObject[2 * t - 1];
             childrenAddresses = new long[2 * t];
             numKeys = 0;
+        }
+
+        @Override
+        public Long getKey() {
+            return address;
         }
     }
 
@@ -389,6 +415,9 @@ public class BTree implements BTreeInterface {
 
             buffer.flip();
             file.write(buffer);
+            if (this.useCache && this.cache != null) {
+            this.cache.add(node);
+        }
         } catch (Exception e) {
             System.err.println("Error writing node to disk at address: " + node.address);
             e.printStackTrace();
@@ -403,6 +432,13 @@ public class BTree implements BTreeInterface {
      */
     public BTreeNode diskRead(long diskAddress) {
         if (diskAddress == 0) return null;
+
+        if (this.useCache && this.cache != null) {
+            BTreeNode cachedNode = this.cache.get(diskAddress);
+            if (cachedNode != null) {
+                return cachedNode;
+            }
+        }
 
         BTreeNode node = null;
 
@@ -432,6 +468,10 @@ public class BTree implements BTreeInterface {
         } catch (IOException e) {
             System.err.println("Error reading node from disk at address: " + diskAddress);
             e.printStackTrace();
+        }
+
+        if (this.useCache && this.cache != null) {
+            this.cache.add(node);
         }
 
         return node;
