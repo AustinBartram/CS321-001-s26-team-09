@@ -21,3 +21,9 @@
 14. Closes #19 commit d1d687b77b2d9b30eb15e405f3af2d7148f67a31 `(CalvinM)`
 15. Create Project-log.md (this file!) commit 5e613eaa52c17f8d182109ce9a96a8bee5af37c1 `(AustinB)`
 16. commit 501324b9761b12849c9aa630de902fb1c8eb119f `(CalvinM)`
+# Sprint 2 (April 11th, Saturday 2026 - April 24th, Friday 2026)
+17. set up the parssing SSHCreateBTreeArguments commit e12806c7efad1ccea554ab02850364e8c5a14398 `(CalvinM)`
+18. added a missing arg commit b32c16954bf119ed5f20008934ad0fa452eae1e4 `(CalvinM)`
+19. Closes #6 commit 970f38d921245802ad3f789711de93bd394548c8 `(CalvinM)`
+20. closes #24 commit 5bce158f5b5d87fb2154b9d88f9a925c1eeda426 `(CalvinM)`
+21. closes #23 commit f78b4e2a5220d6875ce2ad89a6755f7bf6cd4631 `(CalvinM)`
