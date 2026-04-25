@@ -426,11 +426,18 @@ public class BTree implements BTreeInterface {
         }
     }
 
+    /**
+     * this method does an inorder traversal of the tree and inserts the keys and frequencies into the database table in sorted order.
+     * @param node the current node being traversed
+     * @param sqlStatement the SQL statement object used to execute the insert statements
+     * @param tableName the name of the table to insert into
+     * @throws SQLException if there is an error executing the SQL statements
+     */
     private void inorder(BTreeNode node, Statement sqlStatement, String tableName) throws SQLException {
         if (node == null) {
             return;
         }
-
+        // this goes through the keys and children in order. 
         for (int i = 0; i < node.numKeys; i++) {
 
             if (!node.isLeaf) {
@@ -440,7 +447,7 @@ public class BTree implements BTreeInterface {
                     tableName
                 );
             }
-
+            //this inserts the key into the database table. 
             sqlStatement.executeUpdate(
                 "INSERT INTO " + tableName +
                 " VALUES ('" +
@@ -450,7 +457,7 @@ public class BTree implements BTreeInterface {
                 ")"
             );
         }
-
+        // this is for the last child if the node is not a leaf. The last child is at index numKeys.
         if (!node.isLeaf) {
             inorder(
                 diskRead(node.childrenAddresses[node.numKeys]),
@@ -541,7 +548,12 @@ public class BTree implements BTreeInterface {
         }
     }
 
-
+    /**
+     * this method dumps the contents from the Btree into the database.
+     * @param dbName the name of the database file to write to
+     * @param tableName the name of the table to write to in the database
+     * @throws IOException if there is an error writing to the database
+     */
     @Override
     public void dumpToDatabase(String dbName, String tableName) throws IOException {
 
