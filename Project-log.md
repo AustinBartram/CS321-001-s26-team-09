@@ -27,3 +27,4 @@
 19. Closes #6 commit 970f38d921245802ad3f789711de93bd394548c8 `(CalvinM)`
 20. closes #24 commit 5bce158f5b5d87fb2154b9d88f9a925c1eeda426 `(CalvinM)`
 21. closes #23 commit f78b4e2a5220d6875ce2ad89a6755f7bf6cd4631 `(CalvinM)`
+22. closes #20 commit 0bc8f3742848cd3db2a4522d7576b1edb3861193 `(AustinB)`
