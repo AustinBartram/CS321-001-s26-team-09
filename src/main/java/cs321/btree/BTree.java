@@ -1,5 +1,6 @@
 package cs321.btree;
 
+import java.sql.*;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.RandomAccessFile;
@@ -425,6 +426,40 @@ public class BTree implements BTreeInterface {
         }
     }
 
+    private void inorder(BTreeNode node, Statement sqlStatement, String tableName) throws SQLException {
+        if (node == null) {
+            return;
+        }
+
+        for (int i = 0; i < node.numKeys; i++) {
+
+            if (!node.isLeaf) {
+                inorder(
+                    diskRead(node.childrenAddresses[i]),
+                    sqlStatement,
+                    tableName
+                );
+            }
+
+            sqlStatement.executeUpdate(
+                "INSERT INTO " + tableName +
+                " VALUES ('" +
+                node.keys[i].getKey() +
+                "', " +
+                node.keys[i].getCount() +
+                ")"
+            );
+        }
+
+        if (!node.isLeaf) {
+            inorder(
+                diskRead(node.childrenAddresses[node.numKeys]),
+                sqlStatement,
+                tableName
+            );
+        }
+    }
+
     /**
      * this method reads a BTreeNode from disk given its address. It first checks if the disk address is 0,
      * which indicates that the node does not exist on disk and returns null.
@@ -509,8 +544,29 @@ public class BTree implements BTreeInterface {
 
     @Override
     public void dumpToDatabase(String dbName, String tableName) throws IOException {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'dumpToDatabase'");
+
+        String dbURL = "jdbc:sqlite:" + dbName;
+
+        tableName = tableName.replace("-", "");
+
+        try (
+            Connection databaseConnection = DriverManager.getConnection(dbURL);
+            Statement sqlStatement = databaseConnection.createStatement()
+        ) {
+
+            sqlStatement.executeUpdate("DROP TABLE IF EXISTS " + tableName);
+
+            sqlStatement.executeUpdate(
+                "CREATE TABLE " + tableName + " (" +
+                "key_value TEXT NOT NULL, " +
+                "frequency INTEGER NOT NULL)"
+            );
+
+            inorder(root, sqlStatement, tableName);
+
+        } catch (SQLException e) {
+            throw new IOException(e);
+        }
     }
 
     @Override
