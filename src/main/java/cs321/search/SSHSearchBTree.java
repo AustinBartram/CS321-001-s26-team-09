@@ -1,83 +1,121 @@
 package cs321.search;
 
-import java.io.FileWriter;
-import java.io.PrintWriter;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import cs321.btree.BTree;
 import cs321.btree.TreeObject;
 import cs321.common.ParseArgumentException;
-import cs321.create.SSHFileReader;
 
+
+
+
+/**
+ * Relearned and gained some more knowledge on how to get the functions to work through keyset which I learned through https://www.w3schools.com/java/ref_hashmap_keyset.asp.  
+*/
 public class SSHSearchBTree {
 		
 	/**
 	 * Main driver of program.
 	 * @param args
 	 */
-	
 	// TODO: Write the entire main argument
 	public static void main(String[] args) throws Exception {
-	{
-		SSHSearchBTreeArguments myArgs;
-		BTree myTree;
-		try {
-			myArgs = parseArguments(args);
+		
+        SSHSearchBTreeArguments myArgs;
+        BTree myTree;
+		// try catch block to catch any exceptions that are thrown during the program.
+        try {
+            myArgs = parseArguments(args);
 
-			String randomAccessFileName = "SSH_log.txt.ssh.btree."+myArgs.getTreeType() + "." + myArgs.getDegree();
-			
-			if (myArgs.getUseCache() == true) {
-				myTree = new BTree(myArgs.getDegree(), randomAccessFileName, myArgs.getCacheSize(), true);
+            String BTreeFileName = myArgs.getBTreeFileName();
+			// if use cache is true, then we create a BTree with cache, otherwise we create a BTree without cache.
+            if (myArgs.getUseCache()) {
+                myTree = new BTree(myArgs.getDegree(), BTreeFileName, myArgs.getCacheSize(), true);
+            } else {
+                myTree = new BTree(myArgs.getDegree(), BTreeFileName);
+            }
+			// read the query file and search for each key in the BTree, then store the results in a map.
+            BufferedReader fileReader = new BufferedReader(
+                    new FileReader(myArgs.getqueryFileName())
+            );
+			// the map will store the key and then the frequency of that key in the BTree.
+			// the frequency is gained through searching for the key in the BTree. 
+            Map<String, Integer> results = new HashMap<>();
+
+            String key;
+            while ((key = fileReader.readLine()) != null) {
+                key = key.trim();
+
+                TreeObject searchedObject = myTree.search(key);
+                int frequency = (searchedObject == null) ? 0 : (int) searchedObject.getCount();
+
+                results.put(key, frequency);
+            }
+			// close the file reader after we are done reading the query file.
+            fileReader.close();
+			// if top frequency is -1, then we print all the results, otherwise we sort the results by frequency and print the top n 
+			// results based on the value of top frequency.
+			if (myArgs.gettopFrequency() == -1) {
+				// print all the results in the format of key frequency.
+				for (String resultsKey : results.keySet()) {
+					System.out.println(resultsKey + " " + results.get(resultsKey));
+				}
 			} else {
-				myTree = new BTree(myArgs.getDegree(), randomAccessFileName);
-			}
+				// sort the results by frequency in descending order and print the top n results based on the value of top frequency.
+				int size = results.size();
+				String[] keys = new String[size];
+				int[] values = new int[size];
+				// we need to convert the map to two arrays, one for the keys and one for the values, so that we can sort them based on the values.
+				int index = 0;
+				for (String resultsKey : results.keySet()) {
+					keys[index] = resultsKey;
+					values[index] = results.get(resultsKey);
+					index++;
+				}
+				// we can use bubble sort to sort the values in descending order, and we need to swap the keys accordingly 
+				// to keep the key-value pairs together.
+				for (int i = 0; i < size - 1; i++) {
+					for (int j = 0; j < size - i - 1; j++) {
 
-			SSHFileReader reader = new SSHFileReader(myArgs.getSSHFileName());
+						if (values[j] < values[j + 1]) {
+							int tempVal = values[j];
+							values[j] = values[j + 1];
+							values[j + 1] = tempVal;
 
-			while (reader.hasNextLine()) {
-				String line = reader.nextLine();
-				
-				String[] parts = line.trim().split("\\s+");
-				
-				if (parts.length < 5) continue;
+							String tempKey = keys[j];
+							keys[j] = keys[j + 1];
+							keys[j + 1] = tempKey;
+						}
+					}
+				}
 
-				String date = parts[0];
-				String time = parts[1];
-				String status = parts[2];
-				String subject = parts[3];
-				String ip = parts[4];
+				int limit = myArgs.gettopFrequency();
+				if (limit > size) {
+					limit = size;
+				}
 
-				String key = buildKey(myArgs.getTreeType(), date, time, status, subject, ip);
-
-				if (key != null) {
-					myTree.insert(new TreeObject(key));
+				for (int i = 0; i < limit; i++) {
+					System.out.println(keys[i] + " " + values[i]);
 				}
 			}
-			reader.close();
 
-			if (myArgs.getUseDatabase()) {
-				myTree.dumpToDatabase("SSHLogDB.db", myArgs.getTreeType().replace("-", ""));
-			}
+            myTree.close();
 
-			if (myArgs.getDebugLevel() == 1) {
-				PrintWriter fileDump = new PrintWriter(new FileWriter("dump-" + myArgs.getTreeType() + "." + myArgs.getDegree() + ".txt"));
-				myTree.dumpToFile(fileDump);
-				fileDump.close();
-			}
-
-
-			myTree.close();
-		} catch (Exception e) {
-			printUsageAndExit(e.toString());
-		}
-	}
+        } catch (Exception e) {
+            printUsageAndExit(e.toString());
+        }
+    }
 
 	/**
 	 * Process command line arguments.
 	 * @param args  The command line arguments passed to the main method.
 	 */
-	public static SSHSearchBTreeArguments parseArguments(String[] args) throws ParseArgumentException
+	public static SSHSearchBTreeArguments parseArguments(String[] args) throws ParseArgumentException 
 	{
 		final List<String> SUPPORTED_TYPES = Arrays.asList("accepted-ip", "accepted-time", "invalid-ip","invalid-time","failed-ip","failed-time","reverseaddress-ip","reverseaddress-time","user-ip");
 		if (args.length < 5 || args.length > 7) {
@@ -118,11 +156,22 @@ public class SSHSearchBTree {
 				}
 			} else if (key.equals("--btree-file")) {
 				if (value.toLowerCase().startsWith("SSH_log.txt.ssh.btree.")) {
+					
+					boolean isValid = false;
+
 					for (String sub : SUPPORTED_TYPES) {
 						if (value.contains(sub)) {
-							tempBTreeFileName = value;
+							isValid = true;
+							break;
 						}
 					}
+
+					if (isValid) {
+						tempBTreeFileName = value;
+					} else {
+						throw new ParseArgumentException("Error: File must be with SSH_log.txt.ssh.btree.<type>.<degree> where type is one of accepted-ip, accepted-time, invalid-ip, invalid-time, failed-ip, failed-time, reverseaddress-ip, reverseaddress-time or user-ip");
+					}
+
 				} else {
 					throw new ParseArgumentException("Error: File must be with SSH_log.txt.ssh.btree.<type>.<degree>");
 				}
@@ -147,7 +196,7 @@ public class SSHSearchBTree {
 				} catch (NumberFormatException e) {
 					throw new ParseArgumentException("Error: The top frequency value '" + value + "' must be an integer.");
 				}
-				if (tempTopFrequency != 10 || tempTopFrequency != 25 || tempTopFrequency != 50) {
+				if (tempTopFrequency != 10 && tempTopFrequency != 25 && tempTopFrequency != 50) {
 					throw new ParseArgumentException("Error: top frequency needs to be 10, 25 or 50");
 				}
 			} else if (key.equals("--debug")) {
