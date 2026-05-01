@@ -1,20 +1,16 @@
 package cs321.search;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.PriorityQueue;
+import java.util.Scanner;
 
 import cs321.btree.BTree;
 import cs321.btree.TreeObject;
 import cs321.common.ParseArgumentException;
 
-
-
-
-/**
- * Relearned and gained some more knowledge on how to get the functions to work through keyset which I learned through https://www.w3schools.com/java/ref_hashmap_keyset.asp.  
-*/
 public class SSHSearchBTree {
 		
 	/**
@@ -22,54 +18,55 @@ public class SSHSearchBTree {
 	 * @param args
 	 */
 	public static void main(String[] args) throws Exception {
+		try {
+			SSHSearchBTreeArguments bTreeArguments = parseArguments(args);
 
-    SSHSearchBTreeArguments myArgs;
-    BTree myTree;
+			BTree BTreeCache;
+			if (bTreeArguments.getUseCache()) {
+				BTreeCache = new BTree(bTreeArguments.getDegree(), bTreeArguments.getBTreeFileName(), bTreeArguments.getCacheSize(), true);
+			} else {
+				BTreeCache = new BTree(bTreeArguments.getDegree(), bTreeArguments.getBTreeFileName());
+			}
 
-    try {
-        myArgs = parseArguments(args);
+			Scanner fileScanner = new Scanner(new File(bTreeArguments.getqueryFileName()));
 
-        String btreeFileName = myArgs.getBTreeFileName();
+			PriorityQueue<TreeObject> priorityQueue = new PriorityQueue<>((a, b) -> {
+				if (b.getCount() != a.getCount()) {
+					return Long.compare(b.getCount(), a.getCount());
+				}
+				return a.getKey().compareTo(b.getKey());
+			});
 
-        if (myArgs.getUseCache()) {
-            myTree = new BTree(
-                myArgs.getDegree(),
-                btreeFileName,
-                myArgs.getCacheSize(),
-                true
-            );
-        } else {
-            myTree = new BTree(
-                myArgs.getDegree(),
-                btreeFileName
-            );
-        }
+			while (fileScanner.hasNextLine()) {
+				String query = fileScanner.nextLine().trim();
+				if (!query.isEmpty()) {
+					TreeObject result = BTreeCache.search(query);
+					if (result != null) {
+						priorityQueue.add(result);
+					}
+				}
+			}
+			fileScanner.close();
+			BTreeCache.close();
 
-        BufferedReader reader = new BufferedReader(
-            new FileReader(myArgs.getqueryFileName())
-        );
+			int limit = (bTreeArguments.gettopFrequency() != -1) ? bTreeArguments.gettopFrequency() : Integer.MAX_VALUE;
+			int count = 0;
+			while (!priorityQueue.isEmpty() && count < limit) {
+				TreeObject obj = priorityQueue.poll();
+				System.out.println(obj.getKey() + " " + obj.getCount());
+				count++;
+			}
 
-        String query;
-
-        while ((query = reader.readLine()) != null) {
-            query = query.trim();
-
-            TreeObject result = myTree.search(query);
-
-            if (result != null) {
-                System.out.println(query + " " + result.getCount());
-            } else {
-                System.out.println(query + " 0");
-            }
-        }
-
-        reader.close();
-        myTree.close();
-
-    } catch (Exception e) {
-        printUsageAndExit(e.toString());
-    }
-}
+		} catch (ParseArgumentException e) {
+			printUsageAndExit(e.getMessage());
+		} catch (FileNotFoundException e) {
+			printUsageAndExit("File Error: " + e.getMessage());
+		} catch (Exception e) {
+			System.err.println("An unexpected error occurred: " + e.getMessage());
+			e.printStackTrace();
+			System.exit(1);
+		}
+	}
 
 
 
@@ -117,7 +114,7 @@ public class SSHSearchBTree {
 					throw new ParseArgumentException("Error: The degree value must be non negative");
 				}
 			} else if (key.equals("--btree-file")) {
-				if (value.toLowerCase().startsWith("SSH_log.txt.ssh.btree.")) {
+				if (value.startsWith("SSH_log.txt.ssh.btree.")) {
 					
 					boolean isValid = false;
 
