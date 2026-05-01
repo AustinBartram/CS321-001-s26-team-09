@@ -203,7 +203,7 @@ public class SSHCreateBTree {
             throw new ParseArgumentException("Error: --sshFile is missing a value");
         }
         if (tempTreeType.isEmpty()) {
-            throw new ParseArgumentException("Error: --sshFile is missing a value");
+            throw new ParseArgumentException("Error: --type is missing a value");
         }
 
         SSHCreateBTreeArguments myArgs = new SSHCreateBTreeArguments(tempUseCache, tempDegree, tempSSHFileName, tempTreeType, tempCacheSize, tempDebugLevel, tempUseDatabase);

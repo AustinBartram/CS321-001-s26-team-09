@@ -3,7 +3,7 @@ package cs321.create;
 /**
  * SSHCreateBTreeArguments parses command line arguments for SSHCreateBTree.
  *
- *  @author
+ *  @author Calvin McKee
  *
  */
 public class SSHCreateBTreeArguments
