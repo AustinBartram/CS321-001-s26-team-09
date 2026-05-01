@@ -20,6 +20,8 @@ public class SSHSearchBTree {
 		try {
 			SSHSearchBTreeArguments bTreeArguments = parseArguments(args);
 
+			// Create a BTree instance using the degree and file name specified in the command line arguments.
+			// If caching is enabled, also use the specified cache size.
 			BTree BTreeCache;
 			if (bTreeArguments.getUseCache()) {
 				BTreeCache = new BTree(bTreeArguments.getDegree(), bTreeArguments.getBTreeFileName(), bTreeArguments.getCacheSize(), true);
@@ -27,15 +29,18 @@ public class SSHSearchBTree {
 				BTreeCache = new BTree(bTreeArguments.getDegree(), bTreeArguments.getBTreeFileName());
 			}
 
+			// Create a Scanner to read the query file specified in the command line arguments.
 			Scanner fileScanner = new Scanner(new File(bTreeArguments.getqueryFileName()));
 
-			PriorityQueue<TreeObject> priorityQueue = new PriorityQueue<>((a, b) -> {
-				if (b.getCount() != a.getCount()) {
-					return Long.compare(b.getCount(), a.getCount());
+			// Create a priority queue to store the search results, sorted by count (descending) and then by key (ascending).
+			PriorityQueue<TreeObject> priorityQueue = new PriorityQueue<>((firstComparingObj, secondComparingObj) -> {
+				if (secondComparingObj.getCount() != firstComparingObj.getCount()) {
+					return Long.compare(secondComparingObj.getCount(), firstComparingObj.getCount());
 				}
-				return a.getKey().compareTo(b.getKey());
+				return firstComparingObj.getKey().compareTo(secondComparingObj.getKey());
 			});
-
+			// Read each line from the query file, search for it in the BTree, and add the result to the priority queue if found
+			// The priority queue will automatically sort the results based on count (descending) and then key (ascending).
 			while (fileScanner.hasNextLine()) {
 				String query = fileScanner.nextLine().trim();
 				if (!query.isEmpty()) {
@@ -48,14 +53,15 @@ public class SSHSearchBTree {
 			fileScanner.close();
 			BTreeCache.close();
 
-			int limit = (bTreeArguments.gettopFrequency() != -1) ? bTreeArguments.gettopFrequency() : Integer.MAX_VALUE;
+			// Determine the limit for top frequencies to print, which is either the user-specified value or Integer.MAX_VALUE if not specified.
+			int topFrequencyLimit = (bTreeArguments.gettopFrequency() != -1) ? bTreeArguments.gettopFrequency() : Integer.MAX_VALUE;
 			int count = 0;
-			while (!priorityQueue.isEmpty() && count < limit) {
+			while (!priorityQueue.isEmpty() && count < topFrequencyLimit) {
 				TreeObject obj = priorityQueue.poll();
 				System.out.println(obj.getKey() + " " + obj.getCount());
 				count++;
 			}
-
+		// Catch any exceptions thrown during argument parsing or BTree operations and print the usage message along with the error.
 		} catch (Exception e) {
 			printUsageAndExit(e.toString());
 		}
@@ -74,6 +80,7 @@ public class SSHSearchBTree {
 			throw new ParseArgumentException("Invalid number of arguments");
 		}
 
+		// Initialize variables to hold the parsed argument values, with default values where appropriate.
 		boolean tempUseCache = false;
 		int tempDegree = 0;
 		String tempBTreeFileName = "";
@@ -82,6 +89,7 @@ public class SSHSearchBTree {
 		int tempDebugLevel = 0;
 		int tempTopFrequency = -1;
 
+		// Loop through each argument, split it into key and value, and validate the value based on the expected format for each key.
 		for (String arg : args) {
 			String[] parts = arg.split("=", 2); // Split into exactly 2 parts
 			if (parts.length < 2) continue; // Skip if no value provided after '='
@@ -89,6 +97,7 @@ public class SSHSearchBTree {
 			String key = parts[0];
 			String value = parts[1];
 
+			// Validate and assign values based on the key
 			if (key.equals("--cache")) {
 				if (value.equals("1")) {
 					tempUseCache = true;
@@ -111,6 +120,7 @@ public class SSHSearchBTree {
 					
 					boolean isValid = false;
 
+					// Check if the file name contains one of the supported types after the prefix "SSH_log.txt.ssh.btree."
 					for (String sub : SUPPORTED_TYPES) {
 						if (value.contains(sub)) {
 							isValid = true;
@@ -118,6 +128,7 @@ public class SSHSearchBTree {
 						}
 					}
 
+					// If the file name is valid, assign it to tempBTreeFileName; otherwise, throw an exception with an appropriate error message.
 					if (isValid) {
 						tempBTreeFileName = value;
 					} else {
@@ -162,7 +173,7 @@ public class SSHSearchBTree {
 				}
 			}
 		}
-
+		
 		if (tempUseCache == true && tempCacheSize == 0) {
 			throw new ParseArgumentException("Error: The cache size must be initialized when use cache is true");
 		}
