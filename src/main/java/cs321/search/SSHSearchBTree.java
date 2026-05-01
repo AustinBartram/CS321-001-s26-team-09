@@ -3,9 +3,7 @@ package cs321.search;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import cs321.btree.BTree;
 import cs321.btree.TreeObject;
@@ -23,93 +21,57 @@ public class SSHSearchBTree {
 	 * Main driver of program.
 	 * @param args
 	 */
-	// TODO: Write the entire main argument
 	public static void main(String[] args) throws Exception {
-		
-        SSHSearchBTreeArguments myArgs;
-        BTree myTree;
-		// try catch block to catch any exceptions that are thrown during the program.
-        try {
-            myArgs = parseArguments(args);
 
-            String BTreeFileName = myArgs.getBTreeFileName();
-			// if use cache is true, then we create a BTree with cache, otherwise we create a BTree without cache.
-            if (myArgs.getUseCache()) {
-                myTree = new BTree(myArgs.getDegree(), BTreeFileName, myArgs.getCacheSize(), true);
-            } else {
-                myTree = new BTree(myArgs.getDegree(), BTreeFileName);
-            }
-			// read the query file and search for each key in the BTree, then store the results in a map.
-            BufferedReader fileReader = new BufferedReader(
-                    new FileReader(myArgs.getqueryFileName())
+    SSHSearchBTreeArguments myArgs;
+    BTree myTree;
+
+    try {
+        myArgs = parseArguments(args);
+
+        String btreeFileName = myArgs.getBTreeFileName();
+
+        if (myArgs.getUseCache()) {
+            myTree = new BTree(
+                myArgs.getDegree(),
+                btreeFileName,
+                myArgs.getCacheSize(),
+                true
             );
-			// the map will store the key and then the frequency of that key in the BTree.
-			// the frequency is gained through searching for the key in the BTree. 
-            Map<String, Integer> results = new HashMap<>();
-
-            String key;
-            while ((key = fileReader.readLine()) != null) {
-                key = key.trim();
-
-                TreeObject searchedObject = myTree.search(key);
-                int frequency = (searchedObject == null) ? 0 : (int) searchedObject.getCount();
-
-                results.put(key, frequency);
-            }
-			// close the file reader after we are done reading the query file.
-            fileReader.close();
-			// if top frequency is -1, then we print all the results, otherwise we sort the results by frequency and print the top n 
-			// results based on the value of top frequency.
-			if (myArgs.gettopFrequency() == -1) {
-				// print all the results in the format of key frequency.
-				for (String resultsKey : results.keySet()) {
-					System.out.println(resultsKey + " " + results.get(resultsKey));
-				}
-			} else {
-				// sort the results by frequency in descending order and print the top n results based on the value of top frequency.
-				int size = results.size();
-				String[] keys = new String[size];
-				int[] values = new int[size];
-				// we need to convert the map to two arrays, one for the keys and one for the values, so that we can sort them based on the values.
-				int index = 0;
-				for (String resultsKey : results.keySet()) {
-					keys[index] = resultsKey;
-					values[index] = results.get(resultsKey);
-					index++;
-				}
-				// we can use bubble sort to sort the values in descending order, and we need to swap the keys accordingly 
-				// to keep the key-value pairs together.
-				for (int i = 0; i < size - 1; i++) {
-					for (int j = 0; j < size - i - 1; j++) {
-
-						if (values[j] < values[j + 1]) {
-							int tempVal = values[j];
-							values[j] = values[j + 1];
-							values[j + 1] = tempVal;
-
-							String tempKey = keys[j];
-							keys[j] = keys[j + 1];
-							keys[j + 1] = tempKey;
-						}
-					}
-				}
-
-				int limit = myArgs.gettopFrequency();
-				if (limit > size) {
-					limit = size;
-				}
-
-				for (int i = 0; i < limit; i++) {
-					System.out.println(keys[i] + " " + values[i]);
-				}
-			}
-
-            myTree.close();
-
-        } catch (Exception e) {
-            printUsageAndExit(e.toString());
+        } else {
+            myTree = new BTree(
+                myArgs.getDegree(),
+                btreeFileName
+            );
         }
+
+        BufferedReader reader = new BufferedReader(
+            new FileReader(myArgs.getqueryFileName())
+        );
+
+        String query;
+
+        while ((query = reader.readLine()) != null) {
+            query = query.trim();
+
+            TreeObject result = myTree.search(query);
+
+            if (result != null) {
+                System.out.println(query + " " + result.getCount());
+            } else {
+                System.out.println(query + " 0");
+            }
+        }
+
+        reader.close();
+        myTree.close();
+
+    } catch (Exception e) {
+        printUsageAndExit(e.toString());
     }
+}
+
+
 
 	/**
 	 * Process command line arguments.
