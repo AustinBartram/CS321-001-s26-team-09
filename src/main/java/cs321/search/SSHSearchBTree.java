@@ -1,7 +1,6 @@
 package cs321.search;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.PriorityQueue;
@@ -57,14 +56,8 @@ public class SSHSearchBTree {
 				count++;
 			}
 
-		} catch (ParseArgumentException e) {
-			printUsageAndExit(e.getMessage());
-		} catch (FileNotFoundException e) {
-			printUsageAndExit("File Error: " + e.getMessage());
 		} catch (Exception e) {
-			System.err.println("An unexpected error occurred: " + e.getMessage());
-			e.printStackTrace();
-			System.exit(1);
+			printUsageAndExit(e.toString());
 		}
 	}
 
