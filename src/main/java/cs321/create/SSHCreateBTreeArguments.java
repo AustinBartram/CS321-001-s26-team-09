@@ -1,9 +1,10 @@
 package cs321.create;
 
 /**
- * SSHCreateBTreeArguments parses command line arguments for SSHCreateBTree.
+ * SSHCreateBTreeArguments parses command line arguments for SSHCreateBTree. 
+ * It validates the arguments and provides getter methods to access them.
  *
- *  @author Calvin McKee
+ *  @author Calvin McKee, Austin Bartram
  *
  */
 public class SSHCreateBTreeArguments

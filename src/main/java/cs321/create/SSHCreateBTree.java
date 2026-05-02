@@ -12,20 +12,24 @@ import cs321.common.ParseArgumentException;
 
 
 /**
- * The driver class for building a BTree representation of an SSH Log file.
- *
- * @author 
+ * SSHCreateBTree is the main class responsible for creating a B-Tree from a given SSH log file based on specified command-line arguments. 
+ * It processes the SSH log file, extracts relevant information, and inserts it into the B-Tree according to the specified tree type. 
+ * The program also supports dumping the contents of the B-Tree to a file or a database.
+ * @author Austin Bartram, Calvin McKee
  */
 public class SSHCreateBTree {
 
     /**
-     * Main driver of program.
-     * @param args
+     * Main driver of program. Reads in command line arguments, creates a BTree, and processes 
+     * the SSH log file to populate the BTree.
+     * @param args the command line arguments passed to the program
+     * @throws Exception if there is an error during execution, such as invalid arguments or file issues
      */
     public static void main(String[] args) throws Exception 
 	{
         SSHCreateBTreeArguments myArgs;
         BTree myTree;
+        // Process command line arguments and handle any parsing errors
         try {
             myArgs = parseArguments(args);
 
@@ -38,7 +42,9 @@ public class SSHCreateBTree {
             }
 
             SSHFileReader reader = new SSHFileReader(myArgs.getSSHFileName());
-
+            /* this reads the SSH log file line by line and then take given info and extracts the relevant information to
+             * build a key based on the specified tree type. It then inserts the key into the BTree.
+             */
             while (reader.hasNextLine()) {
                 String line = reader.nextLine();
                 
@@ -77,6 +83,17 @@ public class SSHCreateBTree {
         }
 	}
 
+    /**
+     * This method builds a key for the B-Tree based on the specified tree type and the relevant 
+     * information extracted from the SSH log line.
+     * @param type the type of B-Tree being created, which determines how the key is constructed
+     * @param date the date extracted from the SSH log line
+     * @param time the time extracted from the SSH log line
+     * @param status the status extracted from the SSH log line
+     * @param user the user/subject extracted from the SSH log line
+     * @param ip the IP address extracted from the SSH log line
+     * @return a String representing the key to be inserted into the B-Tree, or null if the line does not match the specified tree type conditions
+     */
     private static String buildKey(String type, String date, String time, String status, String user, String ip) {
         String shortTime = (time != null && time.length() >= 5) ? time.substring(0, 5) : time;
 

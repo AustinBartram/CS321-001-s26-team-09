@@ -1,5 +1,10 @@
 package cs321.search;
 
+/**
+ * SSHSearchBTreeArguments parses command line arguments for SSHSearchBTree. 
+ * It validates the arguments and provides getter methods to access them.
+ * @authors Austin Bartram, Calvin McKee
+ */
 public class SSHSearchBTreeArguments
 {
     private final boolean useCache;
@@ -11,8 +16,9 @@ public class SSHSearchBTreeArguments
     private final int topFrequency;
 
     /**
-     * Builds a new SSHCreateBTreeArguments with the specified
-     * command line arguments and tests their validity.
+     * Builds a new SSHCreateBTreeArguments with the specified 
+     * command line arguments and tests their validity. 
+     * 
      *
      * @param useCache boolean for using cache or not
      * @param degree degree for BTree

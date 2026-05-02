@@ -1,9 +1,14 @@
 package cs321.btree;
 
-import cs321.btree.TreeObject;
 import java.io.IOException;
 import java.io.PrintWriter;
-
+/**
+ * BTreeInterface defines the methods that must be implemented by any class that implements a 
+ * B-Tree data structure. It includes methods for getting the size, degree, number of nodes, 
+ * and height of the B-Tree, as well as methods for inserting a key, and dumping the contents of the 
+ * B-Tree to a file or database. 
+ * @author Austin Bartram, Calvin McKee
+ */
 public interface BTreeInterface {
 
     /**

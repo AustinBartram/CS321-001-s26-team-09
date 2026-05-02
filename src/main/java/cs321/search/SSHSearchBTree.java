@@ -1,5 +1,4 @@
 package cs321.search;
-
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.Arrays;
@@ -9,12 +8,13 @@ import cs321.btree.BTree;
 import cs321.btree.TreeObject;
 import cs321.common.ParseArgumentException;
 
-
-
-
 /**
- * Relearned and gained some more knowledge on how to get the functions to work through keyset which I learned through https://www.w3schools.com/java/ref_hashmap_keyset.asp.  
-*/
+ * SSHSearchBTree is the main class responsible for searching a B-Tree based on given command-line arguments. 
+ * It reads a B-Tree from a specified file, processes a query file containing keys to search for, and outputs the 
+ * frequency of each key in the B-Tree. The program also supports options for using a cache, limiting the number of 
+ * top results, and debugging output.
+ * @author Austin Bartram, Calvin McKee
+ */
 public class SSHSearchBTree {
 		
 	/**
@@ -39,7 +39,6 @@ public class SSHSearchBTree {
 
 		BufferedReader reader = new BufferedReader(new FileReader(myArgs.getqueryFileName()));
 		
-		// 1. Store results in a Map instead of printing immediately
 		java.util.Map<String, Integer> results = new java.util.HashMap<>();
 		String query;
 
@@ -56,14 +55,12 @@ public class SSHSearchBTree {
 		
 		System.err.println("DEBUG: Map size is: " + results.size());
 
-		// 2. Decide output based on top-frequency
 		if (myArgs.gettopFrequency() == -1) {
 			// Just print all results as they appear in the map
 			for (String key : results.keySet()) {
 				System.out.println(key + " " + results.get(key));
 			}
 		} else {
-			// 3. SORTING LOGIC: Frequency (Desc), then Alphabetical (Asc)
 			java.util.List<java.util.Map.Entry<String, Integer>> list = new java.util.ArrayList<>(results.entrySet());
 
 			list.sort((e1, e2) -> {
@@ -72,7 +69,6 @@ public class SSHSearchBTree {
 				return e1.getKey().compareTo(e2.getKey());
 			});
 
-			// 4. Print only the top N
 			int limit = Math.min(myArgs.gettopFrequency(), list.size());
 			for (int i = 0; i < limit; i++) {
 				java.util.Map.Entry<String, Integer> entry = list.get(i);
@@ -90,8 +86,10 @@ public class SSHSearchBTree {
 
 
 	/**
-	 * Process command line arguments.
+	 * Process command line arguments. Validates the arguments and returns an SSHSearchBTreeArguments 
+	 * object containing the parsed values.
 	 * @param args  The command line arguments passed to the main method.
+	 * @return an SSHSearchBTreeArguments object containing the parsed command line arguments
 	 */
 	public static SSHSearchBTreeArguments parseArguments(String[] args) throws ParseArgumentException 
 	{
@@ -198,7 +196,7 @@ public class SSHSearchBTree {
 	}
 
 
-	/** 
+	/**
 	 * Print usage message and exit.
 	 * @param errorMessage the error message for proper usage
 	 */

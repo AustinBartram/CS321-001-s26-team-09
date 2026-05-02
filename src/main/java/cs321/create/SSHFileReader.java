@@ -5,7 +5,7 @@ import java.util.Scanner;
 /**
  * Extracts the SSH log file entries.
  *
- * @author 
+ * @author Calvin McKee
  */
 public class SSHFileReader {
     private Scanner scanner;

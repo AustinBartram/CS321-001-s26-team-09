@@ -1,15 +1,27 @@
 package cs321.btree;
 
-import java.sql.*;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
-import cs321.cache.KeyInterface;
+
 import cs321.cache.Cache;
+import cs321.cache.KeyInterface;
+/**
+ * This is a method that implements a BTree data structure that is stored on disk. It has methods for inserting keys, 
+ * searching for keys, and getting the size, degree, number of nodes, height, and sorted key array of the tree. 
+ * It also has a method for dumping the contents of the tree to a file and a database. The BTree is implemented using a 
+ * BTreeNode class that represents each node in the tree. The BTreeNode class has fields for the number of keys.
+ * @author Austin Bartram, Calvin McKee
+ */
 
 public class BTree implements BTreeInterface {
 
@@ -60,6 +72,11 @@ public class BTree implements BTreeInterface {
         this.useCache = useCache;
         if (this.useCache) this.cache = new Cache<>(cacheSize);
 
+        /*
+         * The node size is calculated based on the structure of the BTreeNode. Each node has:
+         * an nteger, a boolean, an array of 2t - 1 TreeObjects, and an array of 2t long addresses. 
+         * The size of each component is calculated and summed to get the total node size in bytes.
+         */
         try {
             RandomAccessFile randomFile = new RandomAccessFile(filename, "rw");
             file = randomFile.getChannel();
@@ -67,28 +84,30 @@ public class BTree implements BTreeInterface {
             buffer = ByteBuffer.allocate(nodeSize);
 
             if (randomFile.length() > 0) {
-                // --- LOAD EXISTING BTREE ---
                 ByteBuffer header = ByteBuffer.allocate(Long.BYTES);
-                file.read(header, 0); // Read the root address from the very beginning
+                file.read(header, 0); 
                 header.flip();
                 this.rootAddress = header.getLong();
                 this.root = diskRead(this.rootAddress);
-                this.nextAddress = randomFile.length(); // New nodes go at the end
+                this.nextAddress = randomFile.length(); 
             } else {
-                // --- INITIALIZE NEW BTREE ---
                 root = new BTreeNode(true);
                 root.address = 8; // Leave 8 bytes for the root pointer at index 0
                 rootAddress = root.address;
                 nextAddress = rootAddress + nodeSize;
                 
-                writeHeader(); // Write the root address to position 0 immediately
+                writeHeader();
                 diskWrite(root);
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
-
+    /**
+     * This method writes the header of the BTree file, which contains the address of the root node. 
+     * It is called whenever the root node changes (e.g., when the tree height increases) to ensure 
+     * that the root address is always correctly stored at the beginning of the file.
+     */
     private void writeHeader() {
         try {
             ByteBuffer header = ByteBuffer.allocate(8);
@@ -100,6 +119,10 @@ public class BTree implements BTreeInterface {
         }
     }
 
+    /**
+     * This is the BTreeNode class that represents each node in the BTree. It implements the KeyInterface with a Long key, 
+     * which is the address of the node on disk.
+     */
     class BTreeNode implements KeyInterface<Long> {
         int numKeys;
         boolean isLeaf;
@@ -124,6 +147,12 @@ public class BTree implements BTreeInterface {
         }
     }
 
+    /**
+     * This method inserts a key into the BTree. It first checks if the key already exists in the tree using the 
+     * nodeSearchHelper method. If it does, it increments the count of that key and updates the node on disk. If the key does not exist,
+     *  it proceeds with the standard BTree insertion algorithm.
+     * @param key the TreeObject to be inserted into the BTree
+     */
     public void insert(TreeObject key) {
         // duplicate maintenance: if key already exists, just increment count
         BTreeNode existing = nodeSearchHelper(root, key);
@@ -160,6 +189,12 @@ public class BTree implements BTreeInterface {
         }
     }
 
+    /**
+     * This is the helper method for inserting a key into the BTree. It takes in a node and a key and inserts the key into the subtree 
+     * rooted at that node.
+     * @param node the node to insert the key into
+     * @param key the TreeObject to be inserted into the subtree rooted at the given node
+     */
     private void insertHelper(BTreeNode node, TreeObject key) {
 
         int i = node.numKeys - 1;
@@ -206,8 +241,8 @@ public class BTree implements BTreeInterface {
 
     /**
      * This method splits a full child node into two nodes and moves the middle key up to the parent.
-     * @param index
-     * @param fullChild
+     * @param index the index of the child to split in the parent node
+     * @param fullChild the child node that is full and needs to be split
      */
     private void splitChild(BTreeNode parent, int index, BTreeNode fullChild) {
         // this creates a new node that will hold the last t - 1 keys of the full child.
@@ -260,12 +295,23 @@ public class BTree implements BTreeInterface {
 
     }
 
-    // this method searches for a key in the tree and returns the TreeObject if found.
+    /**
+     * This method searches for a key in the BTree and returns the TreeObject if found, 
+     * otherwise it returns null. It starts the search from the root node.
+     * @param key the key to search for in the BTree
+     * @return the TreeObject if the key is found, otherwise null
+     */
     public TreeObject search(String key) {
         return searchHelper(root, new TreeObject(key));
     }
 
-    // this method searches for a key in the tree starting from the given node.
+    /**
+     * This is the helper method for searching for a key in the BTree. It takes in a node and a key and searches 
+     * for the key in the subtree rooted at that node.
+     * @param node the node to start the search from 
+     * @param key the key to search for in the subtree rooted at the given node
+     * @return the TreeObject if the key is found, otherwise null
+     */
     private TreeObject searchHelper(BTreeNode node, TreeObject key) {
 
         int i = 0;
@@ -296,9 +342,6 @@ public class BTree implements BTreeInterface {
 
         int i = 0;
 
-        // this goes through the keys in the node until it finds a key that is greater than or equal
-        // to the search key. If it finds a key that is equal to the search key, it returns it. If it
-        // finds a key that is greater than the search key, it stops and goes to the appropriate child.
         while (i < node.numKeys && key.compareTo(node.keys[i]) > 0) {
             i++;
         }
@@ -352,7 +395,11 @@ public class BTree implements BTreeInterface {
         return list.toArray(new String[0]);
     }
 
-    // this method does an inorder traversal of the tree and adds the keys to the list in sorted order.
+    /**
+     * this method does an inorder traversal of the tree and adds the keys to the given list in sorted order.
+     * @param node the current node being traversed
+     * @param list the list to add the keys to in sorted order
+     */
     private void inorder(BTreeNode node, ArrayList<String> list) {
         if (node == null) return;
         // this goes through the keys and children in order. For each key, it first goes to the left child, 
@@ -397,8 +444,12 @@ public class BTree implements BTreeInterface {
             buffer.putLong(0);
         }
     }
-    // this method reads a TreeObject from the buffer. It first reads 64 bytes for the key and then reads 
-    // a long for the count.
+
+    /**
+     * this method reads a TreeObject from the buffer. It reads 64 bytes for the key and a long for the count. 
+     * If the key is empty, it returns null to indicate that there is no key at this position in the node.
+     * @return the TreeObject read from the buffer, or null if there is no key at this position in the node
+     */
     private TreeObject readTreeObject() {
         byte[] keyBytes = new byte[64];
         buffer.get(keyBytes);
@@ -410,8 +461,15 @@ public class BTree implements BTreeInterface {
         return new TreeObject(key, count);
     }
 
+    /**
+     * this method writes a BTreeNode to disk at its address. It first writes the metadata (number of keys and leaf flag),
+     * then writes the keys and counts, and finally writes the children addresses. After writing the node to disk,
+     * it adds it to the cache if caching is enabled.
+     * @param node the BTreeNode to be written to disk
+     * @throws Exception if there is an error writing to disk
+     */
     private void diskWrite(BTreeNode node) {
-        try {    
+        try {
             file.position(node.address);
             buffer.clear();
 
@@ -534,6 +592,13 @@ public class BTree implements BTreeInterface {
         return node;
     }
 
+    /**
+     * this method dumps the contents of the BTree to a file in sorted order. It does this by doing an inorder traversal of the
+     * tree and writing the keys and frequencies to the output file. After writing all the keys to the file, 
+     * it flushes the output stream to ensure that all data is written to the file.
+     * @param out the PrintWriter object used to write to the output file
+     * @throws IOException if there is an error writing to the file
+     */
     @Override
     public void dumpToFile(PrintWriter out) throws IOException {
         dumpHelper(root, out);
@@ -571,17 +636,14 @@ public class BTree implements BTreeInterface {
     @Override
     public void dumpToDatabase(String dbName, String tableName) throws IOException {
         String dbURL = "jdbc:sqlite:" + dbName;
-        // Remove hyphens as they can cause SQL syntax errors in table names
         String cleanTableName = tableName.replace("-", "");
 
         Connection conn = null;
         try {
             conn = DriverManager.getConnection(dbURL);
-            // CRITICAL: Turn off auto-commit to start a transaction
             conn.setAutoCommit(false);
 
             try (Statement sqlStatement = conn.createStatement()) {
-                // Setup the table
                 sqlStatement.executeUpdate("DROP TABLE IF EXISTS " + cleanTableName);
                 sqlStatement.executeUpdate(
                     "CREATE TABLE " + cleanTableName + " (" +
@@ -589,14 +651,12 @@ public class BTree implements BTreeInterface {
                     "frequency INTEGER NOT NULL)"
                 );
 
-                // Use a Prepared Statement for better performance and security
                 String sql = "INSERT INTO " + cleanTableName + " (key_value, frequency) VALUES (?, ?)";
                 try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                     // Start recursive traversal
                     inorderToDatabase(root, pstmt);
                 }
 
-                // Commit all changes at once
                 conn.commit();
             }
         } catch (SQLException e) {
@@ -615,7 +675,10 @@ public class BTree implements BTreeInterface {
     }
 
     /**
-     * Helper method to perform inorder traversal and add batches to the database.
+     * this method does an inorder traversal of the tree and inserts the keys and frequencies into the database table in sorted order.
+     * @param node the current node being traversed
+     * @param pstmt the PreparedStatement object used to execute the insert statements
+     * @throws SQLException
      */
     private void inorderToDatabase(BTreeNode node, PreparedStatement pstmt) throws SQLException {
         if (node == null) return;
@@ -643,6 +706,7 @@ public class BTree implements BTreeInterface {
     @Override
     public void delete(String key) {
         // TODO Auto-generated method stub
+        //OPTIONAL: Implement delete method for extra credit. This is not required for the assignment and will not be tested by the autograder, but it can be implemented if you want to challenge yourself and earn some extra credit.
         throw new UnsupportedOperationException("Unimplemented method 'delete'");
     }
 
