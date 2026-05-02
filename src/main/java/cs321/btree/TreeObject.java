@@ -20,7 +20,11 @@ public class TreeObject implements Comparable<TreeObject> {
      * @param key
      */
     public TreeObject(String key) {
-        this.key = key;
+        if (key != null && key.length() > 32) {
+            this.key = key.substring(0, 32);
+        } else {
+            this.key = key;
+        }
         this.count = 1;
     }
 
@@ -30,7 +34,11 @@ public class TreeObject implements Comparable<TreeObject> {
      * @param count
      */
     public TreeObject(String key, long count) {
-        this.key = key;
+        if (key != null && key.length() > 32) {
+            this.key = key.substring(0, 32);
+        } else {
+            this.key = key;
+        }
         this.count = count;
     }
 

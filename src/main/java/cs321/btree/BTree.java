@@ -57,35 +57,45 @@ public class BTree implements BTreeInterface {
      */
     public BTree(int t, String filename, int cacheSize, boolean useCache) {
         this.t = t;
-
         this.useCache = useCache;
-        if (this.useCache) {
-            this.cache = new Cache<Long, BTreeNode>(cacheSize);
-        }
+        if (this.useCache) this.cache = new Cache<>(cacheSize);
 
-
-        // this sets up the file for disk storage. It creates a RandomAccessFile and gets its FileChannel for reading and writing nodes to disk.
         try {
             RandomAccessFile randomFile = new RandomAccessFile(filename, "rw");
             file = randomFile.getChannel();
-
-            // calculate the size of a node in bytes. This includes the number of keys (int), 
-            // the leaf flag (byte), the keys and counts (2t - 1 TreeObjects), and the child addresses (2t longs).
             nodeSize = Integer.BYTES + 1 + (2 * t - 1) * TreeObject.BYTES + (2 * t) * Long.BYTES;
-
-            // initialize the buffer to the size of a node. This buffer will be used for reading and writing nodes to disk.
             buffer = ByteBuffer.allocate(nodeSize);
 
-            // initialize the root node and set its address. The root node is created as a leaf node with no keys and no children.
-            root = new BTreeNode(true);
-            root.address = METADATA_SIZE;
-
-            // write the root node to disk and set the root address and next address for the next node to be written.
-            // diskWrite(root);
-            rootAddress = root.address;
-            nextAddress = rootAddress + nodeSize;
-
+            if (randomFile.length() > 0) {
+                // --- LOAD EXISTING BTREE ---
+                ByteBuffer header = ByteBuffer.allocate(Long.BYTES);
+                file.read(header, 0); // Read the root address from the very beginning
+                header.flip();
+                this.rootAddress = header.getLong();
+                this.root = diskRead(this.rootAddress);
+                this.nextAddress = randomFile.length(); // New nodes go at the end
+            } else {
+                // --- INITIALIZE NEW BTREE ---
+                root = new BTreeNode(true);
+                root.address = 8; // Leave 8 bytes for the root pointer at index 0
+                rootAddress = root.address;
+                nextAddress = rootAddress + nodeSize;
+                
+                writeHeader(); // Write the root address to position 0 immediately
+                diskWrite(root);
+            }
         } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void writeHeader() {
+        try {
+            ByteBuffer header = ByteBuffer.allocate(8);
+            header.putLong(rootAddress);
+            header.flip();
+            file.write(header, 0); // Always write to the start of the file
+        } catch (IOException e) {
             e.printStackTrace();
         }
     }
@@ -140,12 +150,11 @@ public class BTree implements BTreeInterface {
             s.childrenAddresses[0] = r.address;
             root = s;
             rootAddress = s.address;
-
+            writeHeader();
             // this splits the old root and moves the key up. The new node s becomes the new root and has one key and two children.
             splitChild(s, 0, r);
             insertHelper(s, key);
             // diskWrite(root);
-            // writeHeader();
         } else {
             insertHelper(r, key);
         }
