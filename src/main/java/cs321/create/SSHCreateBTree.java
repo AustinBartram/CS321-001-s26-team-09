@@ -14,7 +14,7 @@ import cs321.common.ParseArgumentException;
 /**
  * The driver class for building a BTree representation of an SSH Log file.
  *
- * @author 
+ * @author Calvin McKee
  */
 public class SSHCreateBTree {
 
