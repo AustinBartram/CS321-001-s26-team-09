@@ -24,20 +24,24 @@ public class SSHCreateBTree {
      */
     public static void main(String[] args) throws Exception 
 	{
-        SSHCreateBTreeArguments myArgs;
-        BTree myTree;
+        SSHCreateBTreeArguments BTreeCreateArgs;
+        BTree NewBTree;
         try {
-            myArgs = parseArguments(args);
+            BTreeCreateArgs = parseArguments(args);
 
+<<<<<<< HEAD
             String randomAccessFileName = "SSH_log.txt.ssh.btree."+myArgs.getTreeType() + "." + args[1].split("=")[1];
+=======
+            String randomAccessFileName = "SSH_log.txt.ssh.btree."+BTreeCreateArgs.getTreeType() + "." + BTreeCreateArgs.getDegree();
+>>>>>>> 19525bb26385dcc5c83fbb1a2f75b30b07dcb31d
             
-            if (myArgs.getUseCache() == true) {
-                myTree = new BTree(myArgs.getDegree(), randomAccessFileName, myArgs.getCacheSize(), true);
+            if (BTreeCreateArgs.getUseCache() == true) {
+                NewBTree = new BTree(BTreeCreateArgs.getDegree(), randomAccessFileName, BTreeCreateArgs.getCacheSize(), true);
             } else {
-                myTree = new BTree(myArgs.getDegree(), randomAccessFileName);
+                NewBTree = new BTree(BTreeCreateArgs.getDegree(), randomAccessFileName);
             }
 
-            SSHFileReader reader = new SSHFileReader(myArgs.getSSHFileName());
+            SSHFileReader reader = new SSHFileReader(BTreeCreateArgs.getSSHFileName());
 
             while (reader.hasNextLine()) {
                 String line = reader.nextLine();
@@ -52,26 +56,32 @@ public class SSHCreateBTree {
                 String subject = parts[3];
                 String ip = parts[4];
 
-                String key = buildKey(myArgs.getTreeType(), date, time, status, subject, ip);
+                String key = buildKey(BTreeCreateArgs.getTreeType(), date, time, status, subject, ip);
 
                 if (key != null) {
-                    myTree.insert(new TreeObject(key));
+                    NewBTree.insert(new TreeObject(key));
                 }
             }
             reader.close();
 
-            if (myArgs.getUseDatabase()) {
-                myTree.dumpToDatabase("SSHLogDB.db", myArgs.getTreeType().replace("-", ""));
+            if (BTreeCreateArgs.getUseDatabase()) {
+                NewBTree.dumpToDatabase("SSHLogDB.db", BTreeCreateArgs.getTreeType().replace("-", ""));
             }
 
+<<<<<<< HEAD
             if (myArgs.getDebugLevel() == 1) {
                 PrintWriter fileDump = new PrintWriter(new FileWriter("dump-" + myArgs.getTreeType() + "." + args[1].split("=")[1] + ".txt"));
                 myTree.dumpToFile(fileDump);
+=======
+            if (BTreeCreateArgs.getDebugLevel() == 1) {
+                PrintWriter fileDump = new PrintWriter(new FileWriter("dump-" + BTreeCreateArgs.getTreeType() + "." + BTreeCreateArgs.getDegree() + ".txt"));
+                NewBTree.dumpToFile(fileDump);
+>>>>>>> 19525bb26385dcc5c83fbb1a2f75b30b07dcb31d
                 fileDump.close();
             }
 
 
-            myTree.close();
+            NewBTree.close();
         } catch (Exception e) {
             printUsageAndExit(e.toString());
         }
@@ -209,8 +219,8 @@ public class SSHCreateBTree {
             throw new ParseArgumentException("Error: --type is missing a value");
         }
 
-        SSHCreateBTreeArguments myArgs = new SSHCreateBTreeArguments(tempUseCache, tempDegree, tempSSHFileName, tempTreeType, tempCacheSize, tempDebugLevel, tempUseDatabase);
-        return myArgs;
+        SSHCreateBTreeArguments BTreeCreateArgs = new SSHCreateBTreeArguments(tempUseCache, tempDegree, tempSSHFileName, tempTreeType, tempCacheSize, tempDebugLevel, tempUseDatabase);
+        return BTreeCreateArgs;
     }
 
 
