@@ -1,15 +1,20 @@
 package cs321.search;
 
-import java.io.File;
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.util.Arrays;
 import java.util.List;
-import java.util.PriorityQueue;
-import java.util.Scanner;
 
 import cs321.btree.BTree;
 import cs321.btree.TreeObject;
 import cs321.common.ParseArgumentException;
 
+
+
+
+/**
+ * Relearned and gained some more knowledge on how to get the functions to work through keyset which I learned through https://www.w3schools.com/java/ref_hashmap_keyset.asp.  
+*/
 public class SSHSearchBTree {
 		
 	/**
@@ -95,7 +100,6 @@ public class SSHSearchBTree {
 			throw new ParseArgumentException("Invalid number of arguments");
 		}
 
-		// Initialize variables to hold the parsed argument values, with default values where appropriate.
 		boolean tempUseCache = false;
 		int tempDegree = 0;
 		String tempBTreeFileName = "";
@@ -104,7 +108,6 @@ public class SSHSearchBTree {
 		int tempDebugLevel = 0;
 		int tempTopFrequency = -1;
 
-		// Loop through each argument, split it into key and value, and validate the value based on the expected format for each key.
 		for (String arg : args) {
 			String[] parts = arg.split("=", 2); // Split into exactly 2 parts
 			if (parts.length < 2) continue; // Skip if no value provided after '='
@@ -112,7 +115,6 @@ public class SSHSearchBTree {
 			String key = parts[0];
 			String value = parts[1];
 
-			// Validate and assign values based on the key
 			if (key.equals("--cache")) {
 				if (value.equals("1")) {
 					tempUseCache = true;
@@ -180,7 +182,7 @@ public class SSHSearchBTree {
 				}
 			}
 		}
-		
+
 		if (tempUseCache == true && tempCacheSize == 0) {
 			throw new ParseArgumentException("Error: The cache size must be initialized when use cache is true");
 		}
