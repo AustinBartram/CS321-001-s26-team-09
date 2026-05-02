@@ -29,7 +29,7 @@ public class SSHCreateBTree {
         try {
             myArgs = parseArguments(args);
 
-            String randomAccessFileName = "SSH_log.txt.ssh.btree."+myArgs.getTreeType() + "." + myArgs.getDegree();
+            String randomAccessFileName = "SSH_log.txt.ssh.btree."+myArgs.getTreeType() + "." + args[1].split("=")[1];
             
             if (myArgs.getUseCache() == true) {
                 myTree = new BTree(myArgs.getDegree(), randomAccessFileName, myArgs.getCacheSize(), true);
@@ -65,7 +65,7 @@ public class SSHCreateBTree {
             }
 
             if (myArgs.getDebugLevel() == 1) {
-                PrintWriter fileDump = new PrintWriter(new FileWriter("dump-" + myArgs.getTreeType() + "." + myArgs.getDegree() + ".txt"));
+                PrintWriter fileDump = new PrintWriter(new FileWriter("dump-" + myArgs.getTreeType() + "." + args[1].split("=")[1] + ".txt"));
                 myTree.dumpToFile(fileDump);
                 fileDump.close();
             }
@@ -78,31 +78,34 @@ public class SSHCreateBTree {
 	}
 
     private static String buildKey(String type, String date, String time, String status, String user, String ip) {
+        String shortTime = (time != null && time.length() >= 5) ? time.substring(0, 5) : time;
+
         switch (type) {
             case "accepted-ip":
                 if (!status.equals("Accepted")) return null;
                 return status + "-" + ip;
             case "accepted-time":
                 if (!status.equals("Accepted")) return null;
-                return status + "-" + date + " " + time;
+                return status + "-" + shortTime;
             case "invalid-ip":
                 if (!status.equals("Invalid")) return null;
                 return status + "-" + ip;
             case "invalid-time":
                 if (!status.equals("Invalid")) return null;
-                return status + "-" + date + " " + time;
+                return status + "-" + shortTime;
             case "failed-ip":
                 if (!status.equals("Failed")) return null;
                 return status + "-" + ip;
             case "failed-time":
                 if (!status.equals("Failed")) return null;
-                return status + "-" + date + " " + time;
+                return status + "-" + shortTime;
             case "reverseaddress-ip":
-                if (status.equals("reverse") || status.equals("Address")) return null;
-                return ip + "-" + status;
+                if (!(status.equals("reverse") || status.equals("Address"))) return null;
+                if (status.equals("reverse")) return status + "-" + ip;
+                return status + "-" + user;
             case "reverseaddress-time":
-                if (status.equals("reverse") || status.equals("Address")) return null;
-                return date + " " + time + "-" + status;
+                if (!(status.equals("reverse") || status.equals("Address"))) return null;
+                return status + "-" + shortTime;
             case "user-ip":
                 if (status.equals("reverse") || status.equals("Address")) return null;
                 return user + "-" + ip;

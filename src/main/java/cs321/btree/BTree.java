@@ -117,8 +117,13 @@ public class BTree implements BTreeInterface {
     public void insert(TreeObject key) {
         // duplicate maintenance: if key already exists, just increment count
         BTreeNode existing = nodeSearchHelper(root, key);
-        if (existing != null) {
-            searchHelper(existing, key).incCount();
+                if (existing != null) {
+            for (int i = 0; i < existing.numKeys; i++) {
+                if (existing.keys[i].compareTo(key) == 0) {
+                    existing.keys[i].incCount(); // Explicitly update the object in the array
+                    break;
+                }
+            }
             diskWrite(existing);
             return;
         }
@@ -556,28 +561,73 @@ public class BTree implements BTreeInterface {
      */
     @Override
     public void dumpToDatabase(String dbName, String tableName) throws IOException {
-
         String dbURL = "jdbc:sqlite:" + dbName;
+        // Remove hyphens as they can cause SQL syntax errors in table names
+        String cleanTableName = tableName.replace("-", "");
 
-        tableName = tableName.replace("-", "");
+        Connection conn = null;
+        try {
+            conn = DriverManager.getConnection(dbURL);
+            // CRITICAL: Turn off auto-commit to start a transaction
+            conn.setAutoCommit(false);
 
-        try (
-            Connection databaseConnection = DriverManager.getConnection(dbURL);
-            Statement sqlStatement = databaseConnection.createStatement()
-        ) {
+            try (Statement sqlStatement = conn.createStatement()) {
+                // Setup the table
+                sqlStatement.executeUpdate("DROP TABLE IF EXISTS " + cleanTableName);
+                sqlStatement.executeUpdate(
+                    "CREATE TABLE " + cleanTableName + " (" +
+                    "key_value TEXT NOT NULL, " +
+                    "frequency INTEGER NOT NULL)"
+                );
 
-            sqlStatement.executeUpdate("DROP TABLE IF EXISTS " + tableName);
+                // Use a Prepared Statement for better performance and security
+                String sql = "INSERT INTO " + cleanTableName + " (key_value, frequency) VALUES (?, ?)";
+                try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                    // Start recursive traversal
+                    inorderToDatabase(root, pstmt);
+                }
 
-            sqlStatement.executeUpdate(
-                "CREATE TABLE " + tableName + " (" +
-                "key_value TEXT NOT NULL, " +
-                "frequency INTEGER NOT NULL)"
-            );
-
-            inorder(root, sqlStatement, tableName);
-
+                // Commit all changes at once
+                conn.commit();
+            }
         } catch (SQLException e) {
-            throw new IOException(e);
+            if (conn != null) {
+                try { conn.rollback(); } catch (SQLException ex) { /* Ignore rollback errors */ }
+            }
+            throw new IOException("Database error during dump: " + e.getMessage(), e);
+        } finally {
+            if (conn != null) {
+                try { 
+                    conn.setAutoCommit(true);
+                    conn.close(); 
+                } catch (SQLException e) { /* Ignore close errors */ }
+            }
+        }
+    }
+
+    /**
+     * Helper method to perform inorder traversal and add batches to the database.
+     */
+    private void inorderToDatabase(BTreeNode node, PreparedStatement pstmt) throws SQLException {
+        if (node == null) return;
+
+        for (int i = 0; i < node.numKeys; i++) {
+            // Visit Left Child
+            if (!node.isLeaf) {
+                inorderToDatabase(diskRead(node.childrenAddresses[i]), pstmt);
+            }
+
+            // Insert Current Key
+            if (node.keys[i] != null) {
+                pstmt.setString(1, node.keys[i].getKey());
+                pstmt.setLong(2, node.keys[i].getCount());
+                pstmt.executeUpdate(); 
+            }
+        }
+
+        // Visit Final Right Child
+        if (!node.isLeaf) {
+            inorderToDatabase(diskRead(node.childrenAddresses[node.numKeys]), pstmt);
         }
     }
 

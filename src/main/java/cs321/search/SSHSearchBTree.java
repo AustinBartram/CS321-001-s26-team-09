@@ -27,48 +27,64 @@ public class SSHSearchBTree {
     BTree myTree;
 
     try {
-        myArgs = parseArguments(args);
+		myArgs = parseArguments(args);
+		String btreeFileName = myArgs.getBTreeFileName();
 
-        String btreeFileName = myArgs.getBTreeFileName();
+		// Initialize BTree
+		if (myArgs.getUseCache()) {
+			myTree = new BTree(myArgs.getDegree(), btreeFileName, myArgs.getCacheSize(), true);
+		} else {
+			myTree = new BTree(myArgs.getDegree(), btreeFileName);
+		}
 
-        if (myArgs.getUseCache()) {
-            myTree = new BTree(
-                myArgs.getDegree(),
-                btreeFileName,
-                myArgs.getCacheSize(),
-                true
-            );
-        } else {
-            myTree = new BTree(
-                myArgs.getDegree(),
-                btreeFileName
-            );
-        }
+		BufferedReader reader = new BufferedReader(new FileReader(myArgs.getqueryFileName()));
+		
+		// 1. Store results in a Map instead of printing immediately
+		java.util.Map<String, Integer> results = new java.util.HashMap<>();
+		String query;
 
-        BufferedReader reader = new BufferedReader(
-            new FileReader(myArgs.getqueryFileName())
-        );
+		while ((query = reader.readLine()) != null) {
+			query = query.trim();
+			if (query.isEmpty()) continue;
 
-        String query;
+			TreeObject result = myTree.search(query);
+			int count = (result != null) ? (int) result.getCount() : 0;
+			results.put(query, count);
+		}
 
-        while ((query = reader.readLine()) != null) {
-            query = query.trim();
+		reader.close();
+		
+		System.err.println("DEBUG: Map size is: " + results.size());
 
-            TreeObject result = myTree.search(query);
+		// 2. Decide output based on top-frequency
+		if (myArgs.gettopFrequency() == -1) {
+			// Just print all results as they appear in the map
+			for (String key : results.keySet()) {
+				System.out.println(key + " " + results.get(key));
+			}
+		} else {
+			// 3. SORTING LOGIC: Frequency (Desc), then Alphabetical (Asc)
+			java.util.List<java.util.Map.Entry<String, Integer>> list = new java.util.ArrayList<>(results.entrySet());
 
-            if (result != null) {
-                System.out.println(query + " " + result.getCount());
-            } else {
-                System.out.println(query + " 0");
-            }
-        }
+			list.sort((e1, e2) -> {
+				int freqCompare = e2.getValue().compareTo(e1.getValue());
+				if (freqCompare != 0) return freqCompare;
+				return e1.getKey().compareTo(e2.getKey());
+			});
 
-        reader.close();
-        myTree.close();
+			// 4. Print only the top N
+			int limit = Math.min(myArgs.gettopFrequency(), list.size());
+			for (int i = 0; i < limit; i++) {
+				java.util.Map.Entry<String, Integer> entry = list.get(i);
+				System.out.println(entry.getKey() + " " + entry.getValue());
+			}
+		}
 
-    } catch (Exception e) {
-        printUsageAndExit(e.toString());
-    }
+		myTree.close();
+
+	} catch (Exception e) {
+		printUsageAndExit(e.toString());
+	}
 }
 
 
@@ -117,26 +133,20 @@ public class SSHSearchBTree {
 					throw new ParseArgumentException("Error: The degree value must be non negative");
 				}
 			} else if (key.equals("--btree-file")) {
-				if (value.toLowerCase().startsWith("SSH_log.txt.ssh.btree.")) {
-					
-					boolean isValid = false;
+                // Check if the filename contains one of the supported types
+                boolean isValid = false;
+                for (String sub : SUPPORTED_TYPES) {
+                    if (value.contains(sub)) {
+                        isValid = true;
+                        break;
+                    }
+                }
 
-					for (String sub : SUPPORTED_TYPES) {
-						if (value.contains(sub)) {
-							isValid = true;
-							break;
-						}
-					}
-
-					if (isValid) {
-						tempBTreeFileName = value;
-					} else {
-						throw new ParseArgumentException("Error: File must be with SSH_log.txt.ssh.btree.<type>.<degree> where type is one of accepted-ip, accepted-time, invalid-ip, invalid-time, failed-ip, failed-time, reverseaddress-ip, reverseaddress-time or user-ip");
-					}
-
-				} else {
-					throw new ParseArgumentException("Error: File must be with SSH_log.txt.ssh.btree.<type>.<degree>");
-				}
+                if (isValid) {
+                    tempBTreeFileName = value;
+                } else {
+                    throw new ParseArgumentException("Error: Invalid BTree file type. Must contain one of: " + SUPPORTED_TYPES);
+                }
 			} else if (key.equals("--query-file")) {
 				if (value.toLowerCase().endsWith(".txt")) {
                     tempQueryFileName = value;
